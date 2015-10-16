@@ -7,7 +7,7 @@ import scikits.audiolab as audlab
 from mfcc import get_mfcc
 
 label_dir = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/test_labels'
-result_dir = '/home/piero/Documents/Experiments/Real_Test/MFCC/Scream vs Noise/3*512'
+result_dir = '/home/piero/Documents/Experiments/Real_Test/MFCC/2 classes/Scream vs Noise/3*512'
 wav_dir = os.path.join(os.path.split(label_dir)[0], 'wav')
 test_data, test_labels = cPickle.load(gzip.open(os.path.join(result_dir, 'data/test.pickle.gz'), 'rb'))
 pred_file = os.path.join(result_dir, 'dnn.classify.pickle.gz')
@@ -38,6 +38,7 @@ for i in range(len(files)):
     count = 0
     index = 0
     save_data = 0.0
+    zero_padding = 0
     f = open(os.path.join(label_dir, files[i]), 'r')
     lines = f.readlines()
     length = len(lines)
@@ -56,8 +57,12 @@ for i in range(len(files)):
         data_spacing = np.floor(L*10)
         save_data += L*10 - data_spacing
         if save_data > 1:
-            data_spacing += np.floor(save_data)
+            zero_padding = np.floor(save_data)
             save_data =  save_data % 1
+        shouting_data = np.concatenate((shouting_data, np.zeros(zero_padding, dtype=int)))
+        noise_data = np.concatenate((noise_data, np.zeros(zero_padding, dtype=int)))
+        label_data = np.concatenate((label_data, np.zeros(zero_padding, dtype=int)))
+        error_vector = np.concatenate((error_vector, np.zeros(zero_padding, dtype=int)))
         total_data += L*10
         test_length = len(label_data)
         if label in label_dic:
