@@ -251,7 +251,7 @@ for i in xrange(len(file_list)):
                 mask_matrix[kk, :] = mask_vector[1:]
                 if end_file == True:
                     break
-            if stream_cnt == n_stream:
+            if stream_cnt == n_stream-1:
                 data_struct.append(data_tensor.astype(np.float32, copy=False))
                 label_struct.append(label_tensor.astype(np.float32, copy=False))
                 mask_struct.append(mask_matrix.astype(np.int32, copy=False))
