@@ -29,6 +29,7 @@ for k in range(N_classes):
     label_dic[classes[k]] = k
 initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'\
                         +name_var+'_labels' # label files
+target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
 file_list = os.listdir(cur_dir)
@@ -108,8 +109,7 @@ for i in range(len(file_list)):
                                 data_vector = np.concatenate((data_vector,
                                                               mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
                         else:
-                            print('Input data sequence does not match \
-                                  minimal length requirement: ignoring')
+                            print('Input data sequence does not match minimal length requirement: ignoring')
                 else:
                     del audio
             except KeyError, e:
