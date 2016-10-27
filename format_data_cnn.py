@@ -30,7 +30,7 @@ for k in range(N_classes):
     label_dic[classes[k]] = k
 initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'\
                         +name_var+'_labels' # label files
-target_path = os.path.join(exp_path,"data")
+target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
 file_list = os.listdir(cur_dir)
