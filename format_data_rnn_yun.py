@@ -32,12 +32,17 @@ print('Classes: ', label_dic)
 shutil.copyfile('/home/piero/Documents/Scripts/format_data_rnn_yun.py',
                 os.path.join(exp_path,'format_data_rnn_yun_copy.py'))
 
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
+#initial_path = exp_path+'/Data_Base/'+name_var+'_labels' # label files
+initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label filestarget_path = os.path.join(exp_path,'data')
 target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
 file_list = os.listdir(cur_dir)
+print file_list
+print cur_dir
+#raw_input("Press Enter to continue...")
 wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
+# wav_dir = '/media/DATA/home/sodoyer/Code_Python/Pierre_DNN/Data_Base/wav'
 data_struct = []
 label_struct = []
 mask_struct = []
@@ -81,6 +86,7 @@ for i in xrange(len(file_list)):
     end_file = False
     stream_full = False
     print('---------------------------->>>>>>>>>>> reading new lab file')
+    #raw_input("Press Enter to continue...")
     lab_name = file_list[i] # os.path.split(os.path.join(wav_dir,file_list[i]))[1]
     print(lab_name)
     line_index = 0
@@ -92,13 +98,13 @@ for i in xrange(len(file_list)):
         if 'WS' in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
-            wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
+           wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
+        # wave_name = wav_dir+"/Fic_TEST_P0_L.wav"
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
         ind_start = 0
         ind_end = 0
-        while end_file != True:
-            print('-------------------> Creating new batch')
+        while end_file != True:#            print('-------------------> Creating new batch')
             n_batch_tot += 1
             label_tensor = np.zeros((n_stream, max_batch_len, N_classes))
             # label_tensor = np.zeros((n_stream, max_batch_len))
@@ -123,6 +129,8 @@ for i in xrange(len(file_list)):
                             length = stop - start
                         else:
                             length = (stop - start) / 10.0 ** 7
+                        print length
+                        #raw_input("Press Enter to continue...")
                         if re_use:
                             pass
                             # print('filling up with rest of previous data')
@@ -145,13 +153,13 @@ for i in xrange(len(file_list)):
                                     im, ax = plt.subplots()
                                     ax.imshow(data, aspect='auto')
                                 length = len(labels)
-                                # print('>length of new data:', length)
+                                print('>length of new data:', length)
                                 # If current data longer than maximum stream lentgh
                                 if len(labels) > max_batch_len:
                                     # If data_vector is empty then proceed in chopping current data and placing it into data vector
-                                    # print('length data vector:', len(data_vector))
-                                    if len(data_vector) == 501 or len(data_vector) == 1:
-                                        # print('>very long sequence, will trim')
+                                    print('length data vector:', len(data_vector))
+                                    if len(data_vector) == (max_batch_len+1) or len(data_vector) == 1:
+                                        print('>very long sequence, will trim')
                                         if restart:
                                             ind_start = 0
                                             ind_end = max_batch_len - 1
@@ -159,7 +167,7 @@ for i in xrange(len(file_list)):
                                         data = data[ind_start: ind_end, :]
                                         labels = labels[ind_start:ind_end, :]
                                         # labels = labels[ind_start:ind_end]
-                                        remaining_data = min(max_batch_len - 1, length - ind_end)
+                                        remaining_data = min(max_batch_len , length - ind_end)
                                         if remaining_data > 2:
                                             restart = False
                                             line_index -= 1
@@ -179,15 +187,15 @@ for i in xrange(len(file_list)):
                                             re_use = True
                                     else:
                                         # Otherwise zero pad current stream and put data in next stream
-                                        # print('>padding with zeros to match length of maximum stream in batch')
+                                        print('>padding with zeros to match length of maximum stream in batch')
                                         zero_pad()
                                         stream_full = True
                                         re_use = True
                                 else:
                                     # Data shorter than max_stream_len -> check if fits in current stream
-                                    if (len(data_vector) + len(labels)) > max_batch_len:
+                                    if (len(data_vector) + len(labels)) > (max_batch_len+1):
                                         # Data doesn't fit in current stream, zero pad current stream and put data in next stream
-                                        # print('>padding with zeros to match length of maximum stream in batch')
+                                        print('>padding with zeros to match length of maximum stream in batch')
                                         zero_pad()
                                         re_use = True
                                     else:
@@ -263,7 +271,7 @@ print('total number of mini-batches:', n_batch_tot)
 obj = [data_struct, label_struct, mask_struct]
 target_name = os.path.join(target_path, name_var + '.pickle.gz')
 ####### Write Pickle file
-print('writing pickle file:', np.shape(obj))
+#print('writing pickle file:', np.shape(obj))
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
 # n = 0
 # for k in range(n_batch_tot):
