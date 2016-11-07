@@ -77,8 +77,7 @@ for i in range(len(file_list)):
                         if time < threshold:
                             # energy = np.sum(audio ** 2, 0) / len(audio)
                             signal = audio  # audio/math.sqrt(energy)
-                            mfcc = get_mfcc(signal, freq, winstep=window_step,
-                                            winlen=window_size, nfft=2048, lowfreq=lowfreq,
+                            mfcc = get_mfcc(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
                                             highfreq=highfreq, numcep=size, nfilt=size + 2)
                             if compute_delta == "True":
                                 d1_mfcc = np.zeros((mfcc.shape[0]-1,mfcc.shape[1]))
@@ -88,7 +87,6 @@ for i in range(len(file_list)):
                             N_iter = np.floor((len(mfcc) - N) / slide)
                             indx = 0
                             mfcc_matrix = np.zeros((1, size * N))
-                            d1_matrix = np.zeros((1, size * N))
                             while indx < len(mfcc):
                                 for kk in range(min(len(mfcc) - indx - 1, N - (len(buffer_vec) / size))):
                                     buffer_vec = np.concatenate((buffer_vec, mfcc[indx + kk, :]))
