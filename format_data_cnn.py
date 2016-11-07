@@ -37,13 +37,14 @@ file_list = os.listdir(cur_dir)
 wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
 label_vector = np.zeros(1, dtype=np.float32)
 if compute_delta == "True":
-    data_vector = np.zeros((1, 2 * nfilt * N), dtype=np.float32)
-else:
-    data_vector = np.zeros((1, nfilt * N), dtype=np.float32)
+    nfilt = 2 * size
+data_vector = np.zeros((1, nfilt * N), dtype=np.float32)
 time_per_occurrence_class = [[] for i in range(N_classes)]
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
 time = 0
+buffer_vec = []
+ind_buffer = 0
 
 for i in range(len(file_list)):
     lab_name = file_list[i] #os.path.split(os.path.join(wav_dir,file_list[i]))[1]
@@ -51,14 +52,17 @@ for i in range(len(file_list)):
     if '~' in lab_name:
         continue
     with open(os.path.join(cur_dir, file_list[i]), 'r') as f:
+        zero_pad = False
         lines = f.readlines()
+        j = 0
+        end_file = False
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
             wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
-        for j in xrange(len(lines)):
+        while not end_file:
             try:
                 cur_line = lines[j].split()
                 start = float(cur_line[0])
@@ -70,55 +74,56 @@ for i in range(len(file_list)):
                     length = (stop - start) / 10.0 ** 7
                 audio = f.read_frames(freq * length)
                 if label in label_dic:
-                    time_per_occurrence_class[label_dic[label]].append(length)
-                    time = np.sum(time_per_occurrence_class[label_dic[label]])
-                    if time < threshold:
-                        # energy = np.sum(audio ** 2, 0) / len(audio)
-                        signal = audio  # audio/math.sqrt(energy)
-                        feat, energy = MFSC(signal, freq, winstep=window_step, nfft=2048,
-                                            lowfreq=100, highfreq=highfreq, nfilt=nfilt)
-                        # feat = np.concatenate((feat, energy[:, np.newaxis]), 1)
-                        feat[:, 0] = energy
-                        if compute_delta == "True":
-                            d1_mfcc = np.zeros((feat.shape[0]-1, feat.shape[1]))
-                            for k in range(feat.shape[0]-1):
-                                d1_mfcc[k,:] = feat[k+1,:] - feat[k,:]
-                            feat = feat[1:,:]
-                        N_iter = len(feat) / N # math.floor(L/window_step/N)
-                        # apply context window
-                        if (length/window_step) > N:
+                    if not zero_pad:
+                        time_per_occurrence_class[label_dic[label]].append(length)
+                        time = np.sum(time_per_occurrence_class[label_dic[label]])
+                        if time < threshold:
+                            # energy = np.sum(audio ** 2, 0) / len(audio)
+                            signal = audio  # audio/math.sqrt(energy)
+                            feat, energy = MFSC(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=100,
+                                                highfreq=highfreq, nfilt=nfilt)
+                            # feat = np.concatenate((feat, energy[:, np.newaxis]), 1)
+                            feat[:, 0] = energy
+                            if compute_delta == "True":
+                                d1_feat = np.zeros((feat.shape[0]-1, feat.shape[1]))
+                                for k in range(feat.shape[0]-1):
+                                    d1_feat[k,:] = feat[k+1,:] - feat[k,:]
+                                feat = feat[1:,:]
+                            N_iter = len(feat) / N # math.floor(L/window_step/N)
+                            indx = 0
                             mfcc_matrix = np.zeros((1, nfilt * N))
-                            d1_matrix = np.zeros((1, nfilt * N))
-                            for k in range(int(N_iter)):
-                                mfcc_vec = []
-                                d1_vec = []
-                                for kk in range(N):
-                                    mfcc_vec = np.concatenate((mfcc_vec, feat[k * N + kk, :]))
-                                    if compute_delta == "True":
-                                        d1_vec = np.concatenate((d1_vec, d1_mfcc[k * slide + kk, :]))
-                                mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
+                            # apply context window
+                            while indx < len(feat):
+                                for kk in range(min(len(feat) - indx - 1, N - (len(buffer_vec) / nfilt))):
+                                    buffer_vec = np.concatenate((buffer_vec, feat[indx + kk, :]))
+                                    ind_buffer += 1
                                 if compute_delta == "True":
-                                    d1_matrix = np.concatenate((d1_matrix, d1_vec[np.newaxis, :]))
-                            if compute_delta == "True":
-                                merged = np.concatenate((mfcc_matrix, d1_matrix), 1)
-                            num_label = label_dic[label] * np.ones(len(mfcc_matrix) - 1)
-                            label_vector = np.append(label_vector,
-                                                     num_label.astype(np.float32, copy=False))
-                            if compute_delta == "True":
-                                data_vector = np.concatenate((data_vector,
-                                                              merged[1:,:].astype(np.float32, copy=False)),0)
-                            else:
-                                data_vector = np.concatenate((data_vector,
-                                                              mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
-                        else:
-                            print('Input data sequence does not match \
-                                  minimal length requirement: ignoring')
+                                    buffer_vec_d = d1_feat[indx:min(len(d1_feat), indx + N), :]
+                                    buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
+                                  # Use label from sequence located in center of buffer !!
+                                if ind_buffer >= (N / 2):
+                                    num_label = label_dic[label] # * np.ones(len(mfcc_matrix) - 1)
+                                if len(buffer_vec) == nfilt * N:
+                                    data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)), 0)
+                                    label_vector = np.append(label_vector, num_label)
+                                    buffer_vec = []
+                                    ind_buffer = 0
+                                indx += (nfilt - slide)
+                    else:
+                        buffer_vec = np.concatenate((buffer_vec, np.zeros((nfilt * N) - len(buffer_vec))))
+                        zero_pad = False
+                else:
+                    del audio
+                    if len(buffer_vec) != 0:
+                        zero_pad = True
+                j += 1
+                if j == len(lines): end_file = True;
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
                 print "Unexpected error:", sys.exc_info()[0]
                 raise
-    print("Size of data_vector: ", data_vector.shape)
+    print("nfilt of data_vector: ", data_vector.shape)
 data_vector = data_vector[1:,:]
 label_vector = label_vector[1:]
 # Feature Standardization
