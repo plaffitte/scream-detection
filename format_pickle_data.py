@@ -36,9 +36,8 @@ file_list = os.listdir(cur_dir)
 wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
 label_vector = np.zeros(1, dtype=np.float32)
 if compute_delta == "True":
-    data_vector = np.zeros((1, 2 * size * N), dtype=np.float32)
-else:
-    data_vector = np.zeros((1, size * N), dtype=np.float32)
+    size = 2 * size
+data_vector = np.zeros((1, size * N), dtype=np.float32)
 time_per_occurrence_class = [[] for i in range(N_classes)]
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
@@ -86,28 +85,16 @@ for i in range(len(file_list)):
                         # apply context window
                         if (length/window_step) > N:
                             mfcc_matrix = np.zeros((1, size * N))
-                            d1_matrix = np.zeros((1, size * N))
                             for k in range(int(N_iter)):
                                 mfcc_vec = []
-                                d1_vec = []
                                 for kk in range(N):
                                     mfcc_vec = np.concatenate((mfcc_vec, mfcc[k * slide + kk, :]))
                                     if compute_delta == "True":
-                                        d1_vec = np.concatenate((d1_vec, d1_mfcc[k * slide + kk, :]))
+                                        mfcc_vec = np.concatenate((mfcc_vec, d1_mfcc[k * slide + kk, :]))
                                 mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
-                                if compute_delta == "True":
-                                    d1_matrix = np.concatenate((d1_matrix, d1_vec[np.newaxis, :]))
-                            if compute_delta == "True":
-                                merged = np.concatenate((mfcc_matrix, d1_matrix), 1)
                             num_label = label_dic[label] * np.ones(len(mfcc_matrix) - 1)
-                            label_vector = np.append(label_vector,
-                                                     num_label.astype(np.float32, copy=False))
-                            if compute_delta == "True":
-                                data_vector = np.concatenate((data_vector,
-                                                              merged[1:,:].astype(np.float32, copy=False)),0)
-                            else:
-                                data_vector = np.concatenate((data_vector,
-                                                              mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
+                            label_vector = np.append(label_vector, num_label.astype(np.float32, copy=False))
+                            data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
                         else:
                             print('Input data sequence does not match minimal length requirement: ignoring')
                 else:
