@@ -7,52 +7,36 @@ from spectral import get_mfcc
 import kaldi_format_data
 import time
 import matplotlib.pyplot as plt
+from util_func import parse_classes, parse_arguments
 
-#### This script formats the data for Yun's rnn network learning but mixes elements from different classes
-#### into each sequences !!!!!! This is for a purely experimental purpose
+#### This script formats the data for Yun's rnn network learning but mixes elements from different
+#### classes into each sequences ! This way the network should learn about the order of occurrence
+#### of the classes in time
 
-######################## SET  PARAMS ##############################
-window_step = 0.010 # in seconds, hop size between two successive mfcc windows
-window_size = 0.100 # in seconds, size of MFCC window
-highfreq = 20000 # maximal analysis frequency for mfcc
-lowfreq = 50# minimal analysis frequency for mfcc
-size = 50 # number of mfcc coef
-exp_path = "/home/piero/Documents/Speech_databases/test/test" # path which experiment is run from
-occurrence_threshold = 2000 # maximum total duration of all occurrences within each class (in s)
-max_seq_length = 500 # parameter for BPTT depth control
-n_stream = 5 # number of stream per batch: first dimension of each batch
-max_batch_len = 500 # maximum length of each stream: second dimension of each batch
-listen = False
-plot = False
-plot_detail = False
-
-######################## SET CLASS PARAMS ###########################
-N_classes = 3
-label_dic = {}
-label_dic['Noise'] = 0
-# label_dic['BG_voice'] = 1
-label_dic['Conversation'] = 1
-label_dic['Shouting'] = 2
-# label_dic['Scream'] = 2
-# label_dic['Other'] = 1
-# shutil.copyfile('/home/piero/Documents/Scripts/format_data_rnn_yun.py',
-#                 os.path.join(exp_path,'format_data_rnn_yun_copy.py'))
-
-def parse_arguments(arg_elements):
-    args = {}
-    arg_num = len(arg_elements) / 2
-    for i in xrange(arg_num):
-        key = arg_elements[2*i].replace("--", "").replace("-", "_")
-        args[key] = arg_elements[2*i+1]
-    return args
-
-######### Some global variables ###########
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = parse_arguments(arg_elements)
 name_var = arguments['data_type']
+classes = parse_classes(arguments['classes'])
 # name_var = 'test'
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
-target_path = os.path.join(exp_path,"data")
+window_step = float(arguments['window_step'])
+window_size = float(arguments['window_size'])
+highfreq = int(arguments['highfreq'])
+lowfreq = int(arguments['lowfreq'])
+size = int(arguments['size'])
+exp_path = arguments['exp_path']
+occurrence_threshold = int(arguments['threshold'])
+max_seq_length = int(arguments['max_seq_len'])
+n_stream = int(arguments['n_stream'])
+max_batch_len = int(arguments['max_batch_len'])
+N_classes = len(classes)
+label_dic = {}
+for k in range(N_classes):
+    label_dic[classes[k]] = k
+print('Classes: ', label_dic)
+shutil.copyfile('/home/piero/Documents/Scripts/format_data_rnn_yun_mix.py',
+                os.path.join(exp_path,'format_data_rnn_yun_mix_copy.py'))
+initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels'
+target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
 file_list = os.listdir(cur_dir)
@@ -63,13 +47,14 @@ mask_struct = []
 time_per_occurrence_class = [[] for i in range(N_classes)]
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
-end_file = False
-stream_full = False
 trim = False
 zero_pad = False
 n_batch_tot = 0
 re_use = False
 restart = True
+listen = False
+plot = False
+plot_detail = False
 
 ########## Callback processing function ##########
 def create_data(sig, label):
@@ -100,13 +85,17 @@ def zero_pad():
 
 ####### Main Loop ##########
 for i in xrange(len(file_list)):
+    end_file = False
     lab_name = file_list[i] # os.path.split(os.path.join(wav_dir,file_list[i]))[1]
     line_index = 0
     if '~' in lab_name:
         continue
     with open(os.path.join(cur_dir, file_list[i]), 'r') as f:
         lines = f.readlines()
-        wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
+        if 'WS' in lab_name:
+            wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
+        else:
+           wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
         ind_start = 0
@@ -121,8 +110,9 @@ for i in xrange(len(file_list)):
             for kk in range(n_stream):
                 print('\n')
                 print("--------> Creating new stream")
+                stream_cnt = kk
                 stream_full = False
-                data_vector = np.zeros((1, 30)).astype(np.float32)
+                data_vector = np.zeros((1, size)).astype(np.float32)
                 label_vector = np.zeros((1, N_classes)).astype(np.int32)
                 # label_vector = np.zeros(1).astype(np.int32)
                 mask_vector = np.zeros(1).astype(np.int32)
@@ -130,10 +120,13 @@ for i in xrange(len(file_list)):
                     try:
                         print('\n')
                         cur_line = lines[line_index].split()
-                        start = int(cur_line[0])
-                        stop = int(cur_line[1])
+                        start = float(cur_line[0])
+                        stop = float(cur_line[1])
                         label = cur_line[2]
-                        length = stop / 10.0 ** 7 - start / 10.0 ** 7
+                        if 'WS' in lab_name:
+                            length = stop - start
+                        else:
+                            length = (stop - start) / 10.0 ** 7
                         if re_use:
                             print("filling up with rest of previous data")
                         else:
@@ -141,10 +134,9 @@ for i in xrange(len(file_list)):
                             audio = f.read_frames(np.floor(freq * length))
                         if label in label_dic:
                             print("This is a:", label)
-                            if listen:
-                                if not re_use:
-                                    audlab.play(audio, freq)
-                                    time.sleep(1)
+                            if listen and not re_use:
+                                audlab.play(audio, freq)
+                                time.sleep(1)
                             signal = audio  # audio/math.sqrt(energy)
                             n_occurrence = np.sum(time_per_occurrence_class[label_dic[label]])
                             if n_occurrence < occurrence_threshold:
@@ -261,9 +253,10 @@ for i in xrange(len(file_list)):
                 mask_matrix[kk, :] = interm
                 if end_file == True:
                     break
-            data_struct.append(data_tensor.astype(np.float32, copy=False))
-            label_struct.append(label_tensor.astype(np.float32, copy=False))
-            mask_struct.append(mask_matrix.astype(np.int32, copy=False))
+            if stream_cnt == n_stream-1:
+                data_struct.append(data_tensor.astype(np.float32, copy=False))
+                label_struct.append(label_tensor.astype(np.float32, copy=False))
+                mask_struct.append(mask_matrix.astype(np.int32, copy=False))
         print('\n\n')
 total_L_sec = stop/(10.0 ** 7)
 total_N = total_L_sec/window_step
