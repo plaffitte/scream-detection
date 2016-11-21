@@ -72,8 +72,6 @@ for i in range(len(file_list)):
                 audio = f.read_frames(freq * length)
                 if label in label_dic:
                     if not zero_pad:
-                        time_per_occurrence_class[label_dic[label]].append(length)
-                        time = np.sum(time_per_occurrence_class[label_dic[label]])
                         if time < threshold:
                             # energy = np.sum(audio ** 2, 0) / len(audio)
                             signal = audio  # audio/math.sqrt(energy)
@@ -96,7 +94,9 @@ for i in range(len(file_list)):
                                     buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
                                 # Use label from sequence located in center of buffer !!
                                 if ind_buffer >= (N / 2):
-                                    num_label = label_dic[label] # * np.ones(len(mfcc_matrix) - 1)
+                                    num_label = label_dic[label]
+                                    time_per_occurrence_class[label_dic[label]].append(length)
+                                    time = np.sum(time_per_occurrence_class[label_dic[label]])
                                 if len(buffer_vec) == size * N:
                                     data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)),0)
                                     label_vector = np.append(label_vector, num_label) # num_label.astype(np.float32, copy=False))

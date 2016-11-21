@@ -27,8 +27,7 @@ N_classes = len(classes)
 label_dic = {}
 for k in range(N_classes):
     label_dic[classes[k]] = k
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'\
-                        +name_var+'_labels' # label files
+initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
 target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
@@ -48,7 +47,7 @@ for i in range(len(file_list)):
     print("-->> Reading file:", lab_name)
     if '~' in lab_name:
         continue
-    with open(os.path.join(cur_dir, file_list[i]), 'r') as f:
+    with open(os.path.join(cur_dir, lab_name), 'r') as f:
         lines = f.readlines()
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
@@ -68,8 +67,6 @@ for i in range(len(file_list)):
                     length = (stop - start) / 10.0 ** 7
                 audio = f.read_frames(freq * length)
                 if label in label_dic:
-                    time_per_occurrence_class[label_dic[label]].append(length)
-                    time = np.sum(time_per_occurrence_class[label_dic[label]])
                     if time < threshold:
                         # energy = np.sum(audio ** 2, 0) / len(audio)
                         signal = audio  # audio/math.sqrt(energy)
@@ -83,6 +80,8 @@ for i in range(len(file_list)):
                         N_iter = np.floor((len(mfcc) - N) / slide)
                         # apply context window
                         if (length/window_step) > N:
+                            time_per_occurrence_class[label_dic[label]].append(length)
+                            time = np.sum(time_per_occurrence_class[label_dic[label]])
                             mfcc_matrix = np.zeros((1, size * N))
                             for k in range(int(N_iter)):
                                 mfcc_vec = []
