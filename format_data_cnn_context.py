@@ -92,6 +92,7 @@ for i in range(len(file_list)):
                             N_iter = len(feat) / N # math.floor(L/window_step/N)
                             indx = 0
                             mfcc_matrix = np.zeros((1, nfilt * N))
+                            no_label = True
                             # apply context window
                             while indx < len(feat):
                                 for kk in range(min(len(feat) - indx - 1, N - (len(buffer_vec) / nfilt))):
@@ -101,8 +102,11 @@ for i in range(len(file_list)):
                                     buffer_vec_d = d1_feat[indx:min(len(d1_feat), indx + N), :]
                                     buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
                                   # Use label from sequence located in center of buffer !!
-                                if ind_buffer >= (N / 2):
-                                    num_label = label_dic[label] # * np.ones(len(mfcc_matrix) - 1)
+                                if ind_buffer >= (N / 2) and no_label:
+                                    num_label = label_dic[label]
+                                    no_label = False
+                                    time_per_occurrence_class[label_dic[label]].append(length)
+                                    time = np.sum(time_per_occurrence_class[label_dic[label]])
                                 if len(buffer_vec) == nfilt * N:
                                     data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)), 0)
                                     label_vector = np.append(label_vector, num_label)

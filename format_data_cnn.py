@@ -70,8 +70,6 @@ for i in range(len(file_list)):
                     length = (stop - start) / 10.0 ** 7
                 audio = f.read_frames(freq * length)
                 if label in label_dic:
-                    time_per_occurrence_class[label_dic[label]].append(length)
-                    time = np.sum(time_per_occurrence_class[label_dic[label]])
                     if time < threshold:
                         # energy = np.sum(audio ** 2, 0) / len(audio)
                         signal = audio  # audio/math.sqrt(energy)
@@ -87,6 +85,8 @@ for i in range(len(file_list)):
                         N_iter = len(feat) / N # math.floor(L/window_step/N)
                         # apply context window
                         if (length/window_step) > N:
+                            time_per_occurrence_class[label_dic[label]].append(length)
+                            time = np.sum(time_per_occurrence_class[label_dic[label]])
                             mfcc_matrix = np.zeros((1, nfilt * N))
                             d1_matrix = np.zeros((1, nfilt * N))
                             for k in range(int(N_iter)):

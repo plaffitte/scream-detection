@@ -85,6 +85,7 @@ for i in range(len(file_list)):
                             N_iter = np.floor((len(mfcc) - N) / slide)
                             indx = 0
                             mfcc_matrix = np.zeros((1, size * N))
+                            no_label = True
                             while indx < len(mfcc):
                                 for kk in range(min(len(mfcc) - indx - 1, N - (len(buffer_vec) / size))):
                                     buffer_vec = np.concatenate((buffer_vec, mfcc[indx + kk, :]))
@@ -93,8 +94,9 @@ for i in range(len(file_list)):
                                     buffer_vec_d = d1_mfcc[indx:min(len(d1_mfcc), indx + N), :]
                                     buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
                                 # Use label from sequence located in center of buffer !!
-                                if ind_buffer >= (N / 2):
+                                if ind_buffer >= (N / 2) and no_label:
                                     num_label = label_dic[label]
+                                    no_label = False
                                     time_per_occurrence_class[label_dic[label]].append(length)
                                     time = np.sum(time_per_occurrence_class[label_dic[label]])
                                 if len(buffer_vec) == size * N:
