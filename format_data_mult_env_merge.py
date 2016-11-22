@@ -33,14 +33,16 @@ label_dic_1 = {}
 label_dic_2 = {}
 label_dic_comp = {}
 for k in range(N_classes_1):
-    label_dic_1[classes_1[k]] = k
+    label_dic_1[classes_1[k]] = k+1
 for k in range(N_classes_2):
-    label_dic_2[classes_2[k]] = k
+    label_dic_2[classes_2[k]] = k+1
 n = 0
-for i, j in zip(classes_1, classes_2):
-    label_dic_comp[n] = str(int(label_dic_1[i]) + int(label_dic_2[j]))
-    n += 1
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
+for i in classes_1:
+    for j in classes_2:
+        label_dic_comp[n] = int(str(label_dic_1[i]) + str(label_dic_2[j]))
+        n += 1
+time_per_occurrence_class = [[] for i in range(N_classes_1 * N_classes_2)]
+initial_path = '/home/piero/Documents/test_folder/'+name_var+'_labels' # label files
 target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
@@ -50,20 +52,19 @@ label_vector = np.zeros(1, dtype=np.float32)
 if compute_delta == "True":
     size = 2 * size
 data_vector = np.zeros((1, size * N), dtype=np.float32)
-# time_per_occurrence_class = [[] for i in range(N_classes)]
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
 time = 0
 start = 0.0
 stop = 0.0
 end_file = False
-
 ### Find all lab files from similar audio file
 multi_lab = {}
 for i in range(len(file_list)):
     sub_list = [n for n in file_list if file_list[i] not in n]
     sim_name=[n for n in sub_list if file_list[i][:-6] in n]
-    multi_lab[file_list[i]]=sim_name
+    if sim_name[0] not in multi_lab:
+        multi_lab[file_list[i]]=sim_name[0]
 multi_lab = dict((k, v) for k, v in multi_lab.iteritems() if v)
 ### Work on each pair of multi-env label files one by one
 for i,j in multi_lab.iteritems():
@@ -76,22 +77,16 @@ for i,j in multi_lab.iteritems():
     print("-->> Reading file:", lab_name_1)
     if ('~' in lab_name_1) or ('~' in lab_name_2):
         continue
+    if "WS" in lab_name_1:
+        wave_name = os.path.join(wav_dir, lab_name_1[:-7]+'.wav')
+    else:
+        wave_name = os.path.join(wav_dir, lab_name_1[:-4]+'.wav')
+    wave = audlab.Sndfile(wave_name, 'r')
+    freq = wave.samplerate
     with open(os.path.join(cur_dir, lab_name_1), 'r') as f1:
         with open(os.path.join(cur_dir, lab_name_2), 'r') as f2:
             lines_1 = f1.readlines()
             lines_2 = f2.readlines()
-            if "WS" in lab_name_1:
-                wave_name_1 = os.path.join(wav_dir, lab_name_1[:-7]+'.wav')
-            else:
-                wave_name_1 = os.path.join(wav_dir, lab_name_1[:-4]+'.wav')
-            if "WS" in lab_name_2:
-                wave_name_2 = os.path.join(wav_dir, lab_name_2[:-7]+'.wav')
-            else:
-                wave_name_2 = os.path.join(wav_dir, lab_name_2[:-4]+'.wav')
-            wave_1 = audlab.Sndfile(wave_name_1, 'r')
-            wave_2 = audlab.Sndfile(wave_name_2, 'r')
-            freq_1 = wave_1.samplerate
-            freq_2 = wave_2.samplerate
             while not end_file :
                 try:
                     ### Check if next label needs to be retrieved for each label file
@@ -106,27 +101,27 @@ for i,j in multi_lab.iteritems():
                         stop_2 = float(cur_line_2[1])
                         label_2 = cur_line_2[2]
                     ### Find out which of the two labels has the shortest length and read audio for that length
-                    if np.min(start_1, start_2) == start_1:
+                    if np.min((start_1, start_2)) == start_1:
                         start = start_1
                     else:
                         start = start_2
-                    if np.min(stop_1, stop_2) == stop_1:
+                    if np.min((stop_1, stop_2)) == stop_1:
                         stop = stop_1
                         index_1 += 1
                         mv_1 = True
                     else:
                         mv_1 = False
-                    if np.min(stop_1, stop_2) == stop_2:
+                    if np.min((stop_1, stop_2)) == stop_2:
                         stop = stop_2
                         index_2 += 1
                         mv_2 = True
                     else:
                         mv_2 = False
-                    if "WS" in lab_name:
+                    if "WS" in lab_name_1:
                         length = stop - start
                     else:
                         length = (stop - start) / 10.0 ** 7
-                    audio = f.read_frames(freq * length)
+                    audio = wave.read_frames(freq * length)
                     if (label_1 in label_dic_1) and (label_2 in label_dic_2):
                         if time < threshold:
                             signal = audio  # audio/math.sqrt(energy)
@@ -140,8 +135,6 @@ for i,j in multi_lab.iteritems():
                             N_iter = np.floor((len(mfcc) - N) / slide)
                             # apply context window
                             if (length/window_step) > N:
-                                # time_per_occurrence_class[label_dic[label]].append(length)
-                                # time = np.sum(time_per_occurrence_class[label_dic[label]])
                                 mfcc_matrix = np.zeros((1, size * N))
                                 for k in range(int(N_iter)):
                                     mfcc_vec = []
@@ -154,14 +147,20 @@ for i,j in multi_lab.iteritems():
                                 num_label =  label_dic_comp.keys()[label_dic_comp.values().index(label_key)] * np.ones(len(mfcc_matrix) - 1)
                                 label_vector = np.append(label_vector, num_label.astype(np.float32, copy=False))
                                 data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
+                                time_per_occurrence_class[label_dic_comp.values().index(label_key)].append(length)
+                                time = np.sum(time_per_occurrence_class[label_dic_comp.values().index(label_key)])
                             else:
                                 print('Input data sequence does not match minimal length requirement: ignoring')
                     else:
                         del audio
+                    if index_1==len(lines_1) or index_2==len(lines_2):
+                        end_file = True
                 except KeyError, e:
                     print "Wrong label name:", label, "at line", j+1
                 except:
                     print "Unexpected error:", sys.exc_info()[0]
+                    print("index 1:", index_1)
+                    print("index 2:", index_2)
                     raise
     print("Size of data_vector: ", data_vector.shape)
 data_vector = data_vector[1:,:]
@@ -173,3 +172,23 @@ obj = [data_vector, label_vector]
 # Now write to file, for pdnn learning
 target_name = os.path.join(target_path,name_var+'.pickle.gz')
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
+
+for class_name, class_value in label_dic_comp.items():
+    string = 'Name of corresponding wav file:'+wave_name+'\n'
+    log.write(string)
+    string = 'number of data from class' + str(class_name) + ':' + \
+                    str(len(time_per_occurrence_class[label_dic_comp.values().index(class_value)]))+'\n'
+    log.write(string)
+    string = 'length of smallest data from class:' + str(class_name) + ':' + \
+                    str(min(time_per_occurrence_class[label_dic_comp.values().index(class_value)]))+'\n'
+    log.write(string)
+    string = 'length of longest data from class:' + str(class_name) + ':' + \
+                    str(max(time_per_occurrence_class[label_dic_comp.values().index(class_value)]))+'\n'
+    log.write(string)
+    string = 'mean length of data from class:' + str(class_name) + ':' + \
+                    str(np.mean(time_per_occurrence_class[label_dic_comp.values().index(class_value)]))+'\n'
+    log.write(string)
+    string = 'total length of data from class:' + str(class_name) + ':' + \
+                    str(np.sum(time_per_occurrence_class[label_dic_comp.values().index(class_value)]))+'\n'
+    log.write(string)
+log.close()
