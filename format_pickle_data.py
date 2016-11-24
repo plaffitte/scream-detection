@@ -47,8 +47,8 @@ for i in range(len(file_list)):
     print("-->> Reading file:", lab_name)
     if '~' in lab_name:
         continue
-    with open(os.path.join(cur_dir, lab_name), 'r') as f:
-        lines = f.readlines()
+    with open(os.path.join(cur_dir, lab_name), 'r') as lab_f:
+        lines = lab_f.readlines()
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
