@@ -24,12 +24,10 @@ nfilt = int(arguments['nfilt'])
 compute_delta = arguments['deltas']
 N_classes = len(classes)
 label_dic = {}
-shutil.copyfile('/home/piero/Documents/Scripts/format_data_cnn.py',
-                os.path.join(exp_path,'format_data_cnn.py'))
+shutil.copyfile('/home/piero/Documents/Scripts/format_data_cnn.py', os.path.join(exp_path,'format_data_cnn.py'))
 for k in range(N_classes):
     label_dic[classes[k]] = k
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'\
-                        +name_var+'_labels' # label files
+initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
 target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
@@ -37,9 +35,8 @@ file_list = os.listdir(cur_dir)
 wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
 label_vector = np.zeros(1, dtype=np.float32)
 if compute_delta == "True":
-    data_vector = np.zeros((1, 2 * nfilt * N), dtype=np.float32)
-else:
-    data_vector = np.zeros((1, nfilt * N), dtype=np.float32)
+    nfilt = 2 * size
+data_vector = np.zeros((1, nfilt * N), dtype=np.float32)
 time_per_occurrence_class = [[] for i in range(N_classes)]
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
@@ -50,14 +47,15 @@ for i in range(len(file_list)):
     print("-->> Reading file:", lab_name)
     if '~' in lab_name:
         continue
-    with open(os.path.join(cur_dir, file_list[i]), 'r') as f:
-        lines = f.readlines()
+    with open(os.path.join(cur_dir, file_list[i]), 'r') as lab_f:
+        lines = lab_f.readlines()
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
             wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
+        print("length of current label file:", len(lines))
         for j in xrange(len(lines)):
             try:
                 cur_line = lines[j].split()
@@ -88,31 +86,19 @@ for i in range(len(file_list)):
                             time_per_occurrence_class[label_dic[label]].append(length)
                             time = np.sum(time_per_occurrence_class[label_dic[label]])
                             mfcc_matrix = np.zeros((1, nfilt * N))
-                            d1_matrix = np.zeros((1, nfilt * N))
                             for k in range(int(N_iter)):
                                 mfcc_vec = []
-                                d1_vec = []
                                 for kk in range(N):
                                     mfcc_vec = np.concatenate((mfcc_vec, feat[k * N + kk, :]))
                                     if compute_delta == "True":
-                                        d1_vec = np.concatenate((d1_vec, d1_mfcc[k * slide + kk, :]))
+                                        mfcc_vec = np.concatenate((mfcc_vec, d1_mfcc[k * slide + kk, :]))
                                 mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
-                                if compute_delta == "True":
-                                    d1_matrix = np.concatenate((d1_matrix, d1_vec[np.newaxis, :]))
-                            if compute_delta == "True":
-                                merged = np.concatenate((mfcc_matrix, d1_matrix), 1)
                             num_label = label_dic[label] * np.ones(len(mfcc_matrix) - 1)
-                            label_vector = np.append(label_vector,
-                                                     num_label.astype(np.float32, copy=False))
-                            if compute_delta == "True":
-                                data_vector = np.concatenate((data_vector,
-                                                              merged[1:,:].astype(np.float32, copy=False)),0)
-                            else:
-                                data_vector = np.concatenate((data_vector,
-                                                              mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
+                            label_vector = np.append(label_vector, num_label.astype(np.float32, copy=False))
+                            data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
                         else:
-                            print('Input data sequence does not match \
-                                  minimal length requirement: ignoring')
+                            pass
+                            # print('Input data sequence does not match minimal length requirement: ignoring')
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
@@ -132,8 +118,6 @@ target_name = os.path.join(target_path,name_var+'.pickle.gz')
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
 
 for class_name, class_value in label_dic.items():
-    string = 'Name of corresponding wav file:'+wave_name+'\n'
-    log.write(string)
     string = 'number of data from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
     log.write(string)
     string = 'length of smallest data from class:' + class_name + ':' + str(min(time_per_occurrence_class[class_value]))+'\n'
@@ -144,4 +128,5 @@ for class_name, class_value in label_dic.items():
     log.write(string)
     string = 'total length of data from class:' + class_name + ':' + str(np.sum(time_per_occurrence_class[class_value]))+'\n'
     log.write(string)
+    log.write("\n")
 log.close()
