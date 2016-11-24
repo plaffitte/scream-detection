@@ -24,12 +24,10 @@ nfilt = int(arguments['nfilt'])
 compute_delta = arguments['deltas']
 N_classes = len(classes)
 label_dic = {}
-shutil.copyfile('/home/piero/Documents/Scripts/format_data_cnn.py',
-                os.path.join(exp_path,'format_data_cnn.py'))
+shutil.copyfile('/home/piero/Documents/Scripts/format_data_cnn.py', os.path.join(exp_path,'format_data_cnn.py'))
 for k in range(N_classes):
     label_dic[classes[k]] = k
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'\
-                        +name_var+'_labels' # label files
+initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label files
 target_path = os.path.join(exp_path,'data')
 os.chdir(initial_path)
 cur_dir = os.getcwd()
@@ -51,9 +49,9 @@ for i in range(len(file_list)):
     print("-->> Reading file:", lab_name)
     if '~' in lab_name:
         continue
-    with open(os.path.join(cur_dir, file_list[i]), 'r') as f:
+    with open(os.path.join(cur_dir, file_list[i]), 'r') as lab_f:
         zero_pad = False
-        lines = f.readlines()
+        lines = lab_f.readlines()
         j = 0
         end_file = False
         if "WS" in lab_name:
@@ -74,60 +72,62 @@ for i in range(len(file_list)):
                     length = (stop - start) / 10.0 ** 7
                 audio = f.read_frames(freq * length)
                 if label in label_dic:
-                    if not zero_pad:
-                        time_per_occurrence_class[label_dic[label]].append(length)
-                        time = np.sum(time_per_occurrence_class[label_dic[label]])
-                        if time < threshold:
-                            # energy = np.sum(audio ** 2, 0) / len(audio)
-                            signal = audio  # audio/math.sqrt(energy)
-                            feat, energy = MFSC(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=100,
-                                                highfreq=highfreq, nfilt=nfilt)
-                            # feat = np.concatenate((feat, energy[:, np.newaxis]), 1)
-                            feat[:, 0] = energy
+                    time_per_occurrence_class[label_dic[label]].append(length)
+                    time = np.sum(time_per_occurrence_class[label_dic[label]])
+                    if time < threshold:
+                        # energy = np.sum(audio ** 2, 0) / len(audio)
+                        signal = audio  # audio/math.sqrt(energy)
+                        feat, energy = MFSC(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=100,
+                                            highfreq=highfreq, nfilt=nfilt)
+                        # feat = np.concatenate((feat, energy[:, np.newaxis]), 1)
+                        feat[:, 0] = energy
+                        if compute_delta == "True":
+                            d1_feat = np.zeros((feat.shape[0]-1, feat.shape[1]))
+                            for k in range(feat.shape[0]-1):
+                                d1_feat[k,:] = feat[k+1,:] - feat[k,:]
+                            feat = feat[1:,:]
+                        N_iter = len(feat) / N # math.floor(L/window_step/N)
+                        indx = 0
+                        mfcc_matrix = np.zeros((1, nfilt * N))
+                        no_label = True
+                        # apply context window
+                        while indx < len(feat):
+                            for kk in range(min(len(feat) - indx - 1, N - (len(buffer_vec) / nfilt))):
+                                buffer_vec = np.concatenate((buffer_vec, feat[indx + kk, :]))
+                                ind_buffer += 1
                             if compute_delta == "True":
-                                d1_feat = np.zeros((feat.shape[0]-1, feat.shape[1]))
-                                for k in range(feat.shape[0]-1):
-                                    d1_feat[k,:] = feat[k+1,:] - feat[k,:]
-                                feat = feat[1:,:]
-                            N_iter = len(feat) / N # math.floor(L/window_step/N)
-                            indx = 0
-                            mfcc_matrix = np.zeros((1, nfilt * N))
-                            no_label = True
-                            # apply context window
-                            while indx < len(feat):
-                                for kk in range(min(len(feat) - indx - 1, N - (len(buffer_vec) / nfilt))):
-                                    buffer_vec = np.concatenate((buffer_vec, feat[indx + kk, :]))
-                                    ind_buffer += 1
-                                if compute_delta == "True":
-                                    buffer_vec_d = d1_feat[indx:min(len(d1_feat), indx + N), :]
-                                    buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
-                                  # Use label from sequence located in center of buffer !!
-                                if ind_buffer >= (N / 2) and no_label:
-                                    num_label = label_dic[label]
-                                    no_label = False
-                                    time_per_occurrence_class[label_dic[label]].append(length)
-                                    time = np.sum(time_per_occurrence_class[label_dic[label]])
-                                if len(buffer_vec) == nfilt * N:
-                                    data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)), 0)
-                                    label_vector = np.append(label_vector, num_label)
-                                    buffer_vec = []
-                                    ind_buffer = 0
-                                indx += (nfilt - slide)
-                    else:
-                        buffer_vec = np.concatenate((buffer_vec, np.zeros((nfilt * N) - len(buffer_vec))))
-                        zero_pad = False
-                else:
-                    del audio
+                                buffer_vec_d = d1_feat[indx:min(len(d1_feat), indx + N), :]
+                                buffer_vec = np.concatenate((buffer_vec, buffer_vec_d))
+                              # Use label from sequence located in center of buffer !!
+                            if ind_buffer >= (N / 2) and no_label:
+                                num_label = label_dic[label]
+                                no_label = False
+                                # time_per_occurrence_class[label_dic[label]].append(length)
+                                # time = np.sum(time_per_occurrence_class[label_dic[label]])
+                            if len(buffer_vec) == nfilt * N:
+                                data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)), 0)
+                                label_vector = np.append(label_vector, num_label)
+                                buffer_vec = []
+                                ind_buffer = 0
+                            indx += (nfilt - slide)
                     if len(buffer_vec) != 0:
                         zero_pad = True
+                else:
+                    del audio
+                    if zero_pad:
+                        buffer_vec = np.concatenate((buffer_vec, np.zeros((nfilt * N) - len(buffer_vec))))
+                        data_vector = np.concatenate((data_vector, buffer_vec[np.newaxis, :].astype(np.float32, copy=False)), 0)
+                        buffer_vec = []
+                        zero_pad = False
                 j += 1
-                if j == len(lines): end_file = True;
+                if j == len(lines):
+                    end_file = True;
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
                 print "Unexpected error:", sys.exc_info()[0]
                 raise
-    print("nfilt of data_vector: ", data_vector.shape)
+    print("Size of data_vector: ", data_vector.shape)
 data_vector = data_vector[1:,:]
 label_vector = label_vector[1:]
 # Feature Standardization
@@ -141,8 +141,6 @@ target_name = os.path.join(target_path,name_var+'.pickle.gz')
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
 
 for class_name, class_value in label_dic.items():
-    string = 'Name of corresponding wav file:'+wave_name+'\n'
-    log.write(string)
     string = 'number of data from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
     log.write(string)
     string = 'length of smallest data from class:' + class_name + ':' + str(min(time_per_occurrence_class[class_value]))+'\n'
@@ -153,4 +151,5 @@ for class_name, class_value in label_dic.items():
     log.write(string)
     string = 'total length of data from class:' + class_name + ':' + str(np.sum(time_per_occurrence_class[class_value]))+'\n'
     log.write(string)
+    log.write("\n")
 log.close()
