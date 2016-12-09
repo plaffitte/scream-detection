@@ -1,4 +1,7 @@
-from features import mfcc, fbank
+try:
+    from features import mfcc, fbank
+except:
+    from python_speech_features import mfcc, fbank
 import numpy as np
 
 def get_mfcc(x,fs=48000,**kwargs):
