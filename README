@@ -1,0 +1,59 @@
+$Revision: 29572 $
+$Author: cocheril $
+$Date: 2016-11-29 15:18:01 +0100 (Tue, 29 Nov 2016) $
+
+## REQUIS
+#----------------------------------------
+
+## Miniconda
+$ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+$ bash Miniconda3-latest-Linux-x86_64.sh  ## ne pas oublier l'export dans la variable PATH comme indiqué à la fin
+
+## Dépendances
+# Ubuntu
+$ sudo apt-get install libsndfile1-dev subversion
+#CentOS
+$ yum install libsndfile-devel libsndfile-utils
+
+## Codes
+$ svn co https://svn.inrets.fr/svnvda/LEOST/DSD .
+
+
+## INSTALLATION (STEP-BY-STEP)
+#----------------------------------------
+
+## Python v2.7
+$ conda create -n py2k7theano python=2.7
+
+## Activation de l'environnement créé
+$ source activate py2k7theano
+
+## Theano
+$ pip install theano==0.7.0
+
+## Paquets spécialisés
+$ pip install python-speech-features scikits.audiolab
+
+## Paquets autres
+$ pip install graphviz matplotlib
+$ pip install bitsets concepts
+
+
+## INSTALLATION (FROM FILE)
+#----------------------------------------
+
+## Python + packages (except scikits.audiolab)
+$ conda env create -f environment.yml
+
+## scikits.audiolab
+$ source activate py2k7theano
+$ pip install scikits.audiolab==0.11.0
+
+## RECUPERATION DU CODE
+#------------------------------------
+$ git clone git+ssh://git@git.renater.fr:2222/dnnforcasa.git
+
+## AJOUT DES FICHIERS AUDIO ET LABELS
+#--------------------------------------------------
+copie des fichiers de labels et audio dans /Data_Base
+
