@@ -13,7 +13,6 @@ export PYTHONPATH=$PYTHONPATH:$pdnndir
 export PYTHONPATH=$PYTHONPATH:$curdir/Scripts
 export PYTHONPATH=$PYTHONPATH:$curdir/interface_latex
 device=cpu
-pythoncmd="nice -n19  /usr/bin/python -u"
 
 ############################### SET PARAMS #############################
 # For regular single environment classification
@@ -38,6 +37,7 @@ layerNumberRBM='0'
 layerNumberDNN='3'
 epoch_numberRBM=0
 lambda="C:0.08:2" #"D:0.1:0.8:0.2,0.05" #
+## source $1
 
 ###################################################################
 rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
