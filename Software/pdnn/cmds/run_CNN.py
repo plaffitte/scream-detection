@@ -84,34 +84,34 @@ if __name__ == '__main__':
         train_error, pred = train_sgd(train_fn, cfg)
         labels = cfg.train_sets.label_vec
         correct_number = 0.0
-        confusion_matrix = numpy.zeros((len(classes), len(classes)))
-        class_occurrence = numpy.zeros((len(classes), len(classes)))
+        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
+        class_occurrence = numpy.zeros((1,cfg.n_outs))
         for i in range(len(pred)):
             p_sorted = pred[i]
             if p_sorted == labels[i]:
                 correct_number += 1
                 confusion_matrix[labels[i], labels[i]] += 1
             else:
-                confusion_matrix[p_sorted, labels[i]] += 1
-            class_occurrence[labels[i]] += 1
-        confusion_matrix = 100 * confusion_matrix / class_occurrence
+                confusion_matrix[labels[i], p_sorted] += 1
+            class_occurrence[0, labels[i]] += 1
+        confusion_matrix = 100 * confusion_matrix / class_occurrence.T
         log('-->> Epoch %d, training error %f ' % (cfg.lrate.epoch, 100 * numpy.mean(train_error)) + '(%)')
         log('Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n')
         # validation
         valid_error, pred2 = validate_by_minibatch(valid_fn, cfg)
         labels = cfg.valid_sets.label_vec
         correct_number = 0.0
-        confusion_matrix = numpy.zeros((len(classes), len(classes)))
-        class_occurrence = numpy.zeros((len(classes), len(classes)))
+        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
+        class_occurrence = numpy.zeros((1,cfg.n_outs))
         for i in range(len(pred2)):
             p_sorted = pred2[i]
             if p_sorted == labels[i]:
                 correct_number += 1
                 confusion_matrix[labels[i], labels[i]] += 1
             else:
-                confusion_matrix[p_sorted, labels[i]] += 1
-            class_occurrence[labels[i]] += 1
-        confusion_matrix = 100 * confusion_matrix / class_occurrence
+                confusion_matrix[labels[i], p_sorted] += 1
+            class_occurrence[0, labels[i]] += 1
+        confusion_matrix = 100 * confusion_matrix / class_occurrence.T
         error_rate = 100 * (1.0 - correct_number / pred2.shape[0])
         log('-->> Epoch %d, lrate %f, validation error %f ' % (cfg.lrate.epoch, cfg.lrate.get_rate(),
                                                             100 * numpy.mean(valid_error)) + '(%)')

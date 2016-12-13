@@ -1,58 +1,58 @@
 #!/bin/bash
-
 ## Display start time
 #--------------------
 echo
 START=$(date +%s)
 echo Simulation starts at: `date`
-
-MODE_TEST_DEBUG=1
-
-##namethisfic="rbm_audio_classification.sh"
+MODE_TEST_DEBUG=$1
 namethisfic=`basename "$0"`
 curdir="$( cd "$( dirname "${BASH_SOURCE[0] }" )" && pwd )"
-echo $curdir
 # two variables you need to set
 pdnndir=$curdir/Software/pdnn  # pointer to PDNN
+export PYTHONPATH=$PYTHONPATH:$pdnndir
+export PYTHONPATH=$PYTHONPATH:$curdir/Scripts
+export PYTHONPATH=$PYTHONPATH:$curdir/interface_latex
 device=cpu
+pythoncmd="nice -n19  /usr/bin/python -u"
 
-#Paramètre du test
-classes="{Conversation,Shouting,Noise}"
+############################### SET PARAMS #############################
+# For regular single environment classification
+# classes="{Conversation,Shouting,Noise}"
+# For multi environment classification
 classes_1="{NO_SPEECH,SPEECH,SHOUT}"
-classes_2="{PARKED,START_UP_SPEED,REDUCTION_SPEED,FULL_SPEED,SLOW_SPEED,STOP_SPEED}"
-rep_classes=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'``echo $classes_2 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+classes_2="{PARKED,COMP_START,START_UP_SPEED,STOP_SPEED,CONTACTOR,COMP_BRAKE}"
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
 window_size=0.025 # in seconds, size of MFCC window
+highfreq='20000' # maximal analysis frequency for mfcc
+lowfreq='50' # minimal analysis frequency for mfcc
+size='40' # number of mfcc or spectral coef
+N='10' #contextual window
+slide='5'
+threshold=10000
+compute_deltas="False"
+ptr=0 # set to 1 if you want pre-training
+coucheRBM=""
+coucheDNN="400:256:18"
+layerNumberRBM='0'
+layerNumberDNN='1'
+epoch_numberRBM=0
+lambda="C:0.08:2" #"D:0.1:0.8:0.2,0.05" #
+
+###################################################################
+rep_classes=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'``echo $classes_2 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
 wst=$(echo "$window_step * 1000" |bc -l)
 wsi=$(echo "$window_size * 1000" |bc -l)
 window_steptxt=${wst/.000/m}
 window_sizetxt=${wsi/.000/m}
-highfreq='20000' # maximal analysis frequency for mfcc
-lowfreq='50' # minimal analysis frequency for mfcc
-size='40' # number of mfcc coef
-N='10' #contextual window
-slide='5'
-
-coucheRBM=""
-coucheDNN="400:256:3"
-layerNumberRBM='0'
-layerNumberDNN='1'
-coucheRBMtxt=$layerNumberRBM"_layer_RBM_0"
-coucheDNNtxt=$layerNumberDNN"_layer_DNN_256_3"
-
-epoch_numberRBM=0
-epoch_numberDNN=5
-
-param_test="{$window_step,$window_size,$highfreq,$lowfreq,$size,$N,$slide}"
+coucheRBMtxt=$layerNumberRBM"x"$coucheRBM
+coucheDNNtxt=$layerNumberDNN"x"$coucheDNN
+param_test="{$window_step,$window_size,$highfreq,$lowfreq,$size,$N,$slide,$threshold,$compute_deltas}"
 param_txt=$typeparam'_'$window_steptxt'_'$window_sizetxt'_'$highfreq'_'$lowfreq'_'$size'_'$N'_'$slide
 
 # export environment variables
 export PYTHONPATH=$PYTHONPATH:$pdnndir
 export THEANO_FLAGS=mode=FAST_RUN,device=$device,floatX=float32,openmp='True'
-# export OMP_NUM_THREADS=2
-# export PATH=/home/piero/etc/miniconda2/bin:$PATH
-# source activate test_pierre
 
 if [ $MODE_TEST_DEBUG -eq 1 ] ; then
     echo " !!! MODE DEBUG - TOUT LE CONTENU DE $curdir/Features VA ETRE EFFACE !!! "
@@ -107,9 +107,12 @@ echo $param_test > $rep_classes/log.txt
 echo $rep_classes
 STEP1_START=$(date +%s)
 if [ $flag -eq 1 ] ; then
-python $curdir/Scripts/format_pickle_data.py --data_type "train" --path $curdir --rep_test $rep_classes --param $param_test --classes $classes --N $Nc
-    python $curdir/Scripts/format_pickle_data.py --data_type "test" --path $curdir --rep_test $rep_classes --param $param_test --classes $classes --N $Nc
-    python $curdir/Scripts/format_pickle_data.py --data_type "valid" --path $curdir --rep_test $rep_classes --param $param_test --classes $classes --N $Nc
+    python $curdir/Scripts/format_data_mult_env_merge.py --data_type "train" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
+    python $curdir/Scripts/format_data_mult_env_merge.py --data_type "test" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
+    python $curdir/Scripts/format_data_mult_env_merge.py --data_type "valid" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
 fi
 STEP1_END=$(date +%s)
 
@@ -139,11 +142,13 @@ fi
 echo "Training the DNN model ..."
 STEP3_START=$(date +%s)
 python $pdnndir/cmds/run_DNN.py --train-data "$rep_classes/train.pickle.gz" \
-                                --valid-data "$rep_classes/valid.pickle.gz" \
+                                --valid-data "$rep_classes/valid.pickle.gz" --classes [$classes_1+$classes_2]\
                                 --nnet-spec $coucheDNN --wdir $rep_classes/$coucheRBMtxt/$coucheDNNtxt \
-                                --l2-reg 0.001 --lrate "C:0.1:$epoch_numberDNN" --model-save-step 10 \
+                                --l2-reg 0.001 --lrate $lambda --model-save-step 10 \
                                 --ptr-layer-number $layerNumberRBM --ptr-file $rep_classes/$coucheRBMtxt/rbm.param \
-                                --param-output-file  $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.param --cfg-output-file $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.cfg  > $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.training.log
+                                --param-output-file  $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.param \
+                                --cfg-output-file $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.cfg
+                                > $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.training.log
 STEP3_END=$(date +%s)
 
 # classification on the test set
@@ -158,9 +163,9 @@ STEP4_END=$(date +%s)
 
 mkdir $rep_classes/$coucheRBMtxt/$coucheDNNtxt/tex
 STEP5_START=$(date +%s)
-python show_results.py --pred_file "$rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.classify.pickle.gz" \
+python $curdir/Scripts/show_results.py --pred_file "$rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.classify.pickle.gz" \
            --datapath $rep_classes \
-           --classes $classes \
+           --classes [$classes_1+$classes_2] \
            --filepath $rep_classes/$coucheRBMtxt/$coucheDNNtxt/tex\
            --nametex "Confusion_matrix"
 STEP5_END=$(date +%s)

@@ -2,22 +2,22 @@ from RNN import RNN
 import numpy as np
 import sys, os, gzip
 import cPickle
-from util_func import parse_arguments, log
+from util_func import parse_arguments, log, parse_classes
 from liblatex import *
 
 
-def parse_classes(class_str,N):
-    class_list = []
-    start = 1
-    i=0
-    for j in range(N):
-        while class_str[i] not in [',', '}']:
-            i += 1
-        end = i
-        class_list.append(class_str[start:end])
-        start = i+1
-        i += 1
-    return class_list
+# def parse_classes(class_str,N):
+#     class_list = []
+#     start = 1
+#     i=0
+#     for j in range(N):
+#         while class_str[i] not in [',', '}']:
+#             i += 1
+#         end = i
+#         class_list.append(class_str[start:end])
+#         start = i+1
+#         i += 1
+#     return class_list
 
 # ############################### Read Data ###############################
 def read(data):
@@ -55,7 +55,7 @@ filesave = arguments['filesave']
 fileTex = arguments['fileTex']
 classes= arguments['classes']
 n_epoch = int(arguments['epoch'])
-lrate = float(arguments['lambda'])
+lrate = np.float32(arguments['lambda'])
 train_data_spec = arguments['train_data']
 valid_data_spec = arguments['valid_data']
 test_data_spec = arguments['test_data']

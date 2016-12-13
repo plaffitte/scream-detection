@@ -9,52 +9,73 @@ import time
 import matplotlib.pyplot as plt
 from util_func import parse_classes, parse_arguments
 
+typeFeature = "MFCC"
+name_cur_file = os.path.basename(__file__)
+name_cur_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.getcwd()
+
+##### Parse Arguments #####
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = parse_arguments(arg_elements)
 name_var = arguments['data_type']
+target_path = arguments['rep_test']
+param_str = arguments['param']
 classes = parse_classes(arguments['classes'])
-# name_var = 'test'
-window_step = float(arguments['window_step'])
-window_size = float(arguments['window_size'])
-highfreq = int(arguments['highfreq'])
-lowfreq = int(arguments['lowfreq'])
-size = int(arguments['size'])
-exp_path = arguments['exp_path']
-occurrence_threshold = int(arguments['threshold'])
+N_classes = len(classes)
+param_list = parse_classes(param_str)
+window_step=float(param_list[0] )# in seconds, hop size between two successive mfcc windows
+window_size=float(param_list[1] )# in seconds, size of MFCC window
+highfreq=float(param_list[2]) # maximal analysis frequency for mfcc
+lowfreq=float(param_list[3]) # minimal analysis frequency for mfcc
+size=int(param_list[4]) # number of mfcc coef
+occurrence_threshold = int(param_list[5])
+compute_delta = param_list[6]
 max_seq_length = int(arguments['max_seq_len'])
 n_stream = int(arguments['n_stream'])
 max_batch_len = int(arguments['max_batch_len'])
-N_classes = len(classes)
-label_dic = {}
-for k in range(N_classes):
-    label_dic[classes[k]] = k
-print('Classes: ', label_dic)
-shutil.copyfile('/home/piero/Documents/Scripts/format_data_rnn_yun.py',
-                os.path.join(exp_path,'format_data_rnn_yun_copy.py'))
 
-#initial_path = exp_path+'/Data_Base/'+name_var+'_labels' # label files
-initial_path = '/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/'+name_var+'_labels' # label filestarget_path = os.path.join(exp_path,'data')
-target_path = os.path.join(exp_path,'data')
-os.chdir(initial_path)
-cur_dir = os.getcwd()
-file_list = os.listdir(cur_dir)
-print file_list
-print cur_dir
-#raw_input("Press Enter to continue...")
-wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
-# wav_dir = '/media/DATA/home/sodoyer/Code_Python/Pierre_DNN/Data_Base/wav'
+##### Initialize label dic #####
+label_dic = {}
+for i in range(len(classes)):
+    label_dic[classes[i]] = i
+    print classes[i] + " : " + str(i)
+
+##### Copy label files and current script where necessary to trace experiment #####
+shutil.copyfile(os.path.join(name_cur_dir, name_cur_file), os.path.join(target_path, name_cur_file))
+label_path = source_dir + '/Data_Base/' + name_var + '_labels' # Path to label files
+shutil.rmtree(os.path.join(target_path, name_var+'_labels'), ignore_errors=True)
+shutil.copytree(label_path, os.path.join(target_path, name_var+'_labels'))
+
+##### Memory allocation #####
+time_per_occurrence_class = [[] for i in range(N_classes)]
 data_struct = []
 label_struct = []
 mask_struct = []
-time_per_occurrence_class = [[] for i in range(N_classes)]
+
+##### Couple log writings #####
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
+string = '===== Parametre Features:\n'; log.write(string)
+string = ' typeFeature : ' + typeFeature + '\n'; log.write(string)
+string = ' window_step : ' + param_list[0] + '\n'; log.write(string)
+string = ' window_size : ' + param_list[1] + '\n'; log.write(string)
+string = ' highfreq : ' + param_list[2] + '\n'; log.write(string)
+string = ' lowfreq : ' + param_list[3] + '\n'; log.write(string)
+string = ' nfilt : ' + param_list[4] + '\n'; log.write(string)
+string = ' N contextual window : ' + param_list[5] + '\n'; log.write(string)
+string = ' Slide : ' + param_list[6] + '\n\n'; log.write(string)
+string = '===== Name of corresponding wav file:\n'; log.write(string)
+
+##### Main Loop #####
+file_list = os.listdir(label_path)
+file_list = [file for file in file_list if os.path.isfile(os.path.join(label_path, file))]
+wav_dir = os.path.join(os.path.split(label_path)[0], 'wav')
+time = 0
 trim = False
 zero_pad = False
 n_batch_tot = 0
 re_use = False
 restart = True
-listen = False
 plot = False
 plot_detail = False
 
@@ -93,8 +114,8 @@ for i in xrange(len(file_list)):
     if '~' in lab_name:
         print('wrong lab file')
         continue
-    with open(os.path.join(cur_dir, lab_name), 'r') as f:
-        lines = f.readlines()
+    with open(os.path.join(label_path, file_list[i]), 'r') as lab_f:
+        lines = lab_f.readlines()
         if 'WS' in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
@@ -129,7 +150,6 @@ for i in xrange(len(file_list)):
                             length = stop - start
                         else:
                             length = (stop - start) / 10.0 ** 7
-                        print length
                         #raw_input("Press Enter to continue...")
                         if re_use:
                             pass
@@ -139,11 +159,6 @@ for i in xrange(len(file_list)):
                             audio = f.read_frames(np.floor(freq * length))
                             time_per_occurrence_class[label_dic[label]].append(length)
                         if label in label_dic:
-                            # print('This is a:', label)
-                            if listen:
-                                if not re_use:
-                                    audlab.play(audio, freq)
-                                    time.sleep(1)
                             signal = audio  # audio/math.sqrt(energy)
                             n_occurrence = np.sum(time_per_occurrence_class[label_dic[label]])
                             if n_occurrence < occurrence_threshold:
@@ -273,13 +288,6 @@ target_name = os.path.join(target_path, name_var + '.pickle.gz')
 ####### Write Pickle file
 #print('writing pickle file:', np.shape(obj))
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
-# n = 0
-# for k in range(n_batch_tot):
-#     for kk in range(n_stream):
-#         obj = [data_struct[k][kk, :, :], label_struct[k][kk, :], mask_struct[k][kk, :]]
-#         target_name = os.path.join(target_path, str(n) + name_var + '.pickle.gz')
-#         cPickle.dump(obj, gzip.open(target_name, 'wb'),cPickle.HIGHEST_PROTOCOL)
-#         n += 1
 
 for class_name, class_value in label_dic.items():
     string = 'Name of corresponding wav file:'+wave_name+'\n'

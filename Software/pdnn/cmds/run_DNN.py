@@ -42,7 +42,6 @@ if __name__ == '__main__':
     valid_data_spec = arguments['valid_data']
     nnet_spec = arguments['nnet_spec']
     wdir = arguments['wdir']
-    classes = parse_classes(arguments['classes'])
 
     # parse network configuration from arguments, and initialize data reading
     cfg = NetworkConfig()
@@ -92,8 +91,8 @@ if __name__ == '__main__':
         train_error, pred = train_sgd(train_fn, cfg)
         labels = cfg.train_sets.label_vec
         correct_number = 0.0
-        confusion_matrix = numpy.zeros((len(classes), len(classes)))
-        class_occurrence = numpy.zeros((1,len(classes)))
+        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
+        class_occurrence = numpy.zeros((1,cfg.n_outs))
         for i in range(len(pred)):
             p_sorted = pred[i]
             if p_sorted == labels[i]:
@@ -109,8 +108,8 @@ if __name__ == '__main__':
         valid_error, pred2 = validate_by_minibatch(valid_fn, cfg)
         labels = cfg.valid_sets.label_vec
         correct_number = 0.0
-        confusion_matrix = numpy.zeros((len(classes), len(classes)))
-        class_occurrence = numpy.zeros((1,len(classes)))
+        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
+        class_occurrence = numpy.zeros((1, cfg.n_outs))
         for i in range(len(pred2)):
             p_sorted = pred2[i]
             if p_sorted == labels[i]:

@@ -5,24 +5,27 @@ import cPickle, gzip
 import numpy as np
 import util_func as utils
 
+from liblatex import *
+
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = utils.parse_arguments(arg_elements)
 pred_file = arguments['pred_file']
 class_str = arguments['classes']
 filepath = arguments['filepath']
-#pred_file = 'dnn.classify.pickle.gz'
+datapath = arguments['datapath']
+nametex= arguments['nametex']
 if '.gz' in pred_file:
     pred_mat = cPickle.load(gzip.open(pred_file, 'rb'))
 else:
     pred_mat = cPickle.load(open(pred_file, 'rb'))
 
 # load the testing set to get the labels
-test_data, test_labels = cPickle.load(gzip.open('data/test.pickle.gz', 'rb'))
+test_data, test_labels = cPickle.load(gzip.open(datapath+'/test.pickle.gz', 'rb'))
 test_labels = test_labels.astype(numpy.int32)
 
 confusion_matrix = np.zeros((pred_mat.shape[1], pred_mat.shape[1])) # rows represent predicted classes and columns
                                                                                                                     # represent true classes
-class_occurrence = np.zeros(pred_mat.shape[1])
+class_occurrence = np.zeros((1,pred_mat.shape[1]))
 correct_number = 0.0
 
 for i in xrange(pred_mat.shape[0]):
@@ -30,13 +33,13 @@ for i in xrange(pred_mat.shape[0]):
     p_sorted = (-p).argsort()
     if p_sorted[0] == test_labels[i]:
         correct_number += 1
-        confusion_matrix[test_labels[i],test_labels[i]] += 1
+        confusion_matrix[test_labels[i], test_labels[i]] += 1
     else:
-        confusion_matrix[p_sorted[0],test_labels[i]] += 1
+        confusion_matrix[test_labels[i], p_sorted[0]] += 1
 
-    class_occurrence[test_labels[i]]+=1
+    class_occurrence[0, test_labels[i]]+=1
 
-confusion_matrix = 100*confusion_matrix/class_occurrence
+confusion_matrix = 100*confusion_matrix / class_occurrence.T
 error_rate = 100 * (1.0 - correct_number / pred_mat.shape[0])
 print 'Error rate is ' + str(error_rate) + ' (%)'
 print 'Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n'
@@ -63,4 +66,9 @@ for i in range(len(class_list)):
     if '_' in class_list[i]:
         class_list[i] = class_list[i].replace('_', ' ')
 print(class_list)
-utils.text_to_latex(confusion_matrix,class_list,filepath)
+Docpath = filepath
+TabPath = filepath
+Docname = nametex
+TabName = "table"
+texfile = DocTabTex(confusion_matrix,class_list,"Tab01","legende",Docpath,TabPath,Docname,TabName,option='t',commentaire="%test ommanataire")
+texfile.creatTex();

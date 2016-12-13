@@ -30,6 +30,7 @@ slide=int(param_list[6])
 threshold = int(param_list[7])
 compute_delta = param_list[8]
 
+##### Initialize label dic #####
 label_dic = {}
 for i in range(len(classes)):
     label_dic[classes[i]] = i
@@ -37,7 +38,7 @@ for i in range(len(classes)):
 
 ##### Copy label files and current script where necessary to trace experiment #####
 shutil.copyfile(os.path.join(name_cur_dir, name_cur_file), os.path.join(target_path, name_cur_file))
-label_path = "/home/piero/Documents/Speech_databases/DeGIV/29-30-Jan/" + name_var + '_labels' # Path to label files
+label_path = source_dir + '/Data_Base/' + name_var + '_labels' # Path to label files
 shutil.rmtree(os.path.join(target_path, name_var+'_labels'), ignore_errors=True)
 shutil.copytree(label_path, os.path.join(target_path, name_var+'_labels'))
 
@@ -68,8 +69,7 @@ file_list = [file for file in file_list if os.path.isfile(os.path.join(label_pat
 wav_dir = os.path.join(os.path.split(label_path)[0], 'wav')
 time = 0
 for i in range(len(file_list)):
-    lab_name = file_list[i] #os.path.split(os.path.join(wav_dir,file_list[i]))[1]
-    print("-->> Reading file:", lab_name)
+    lab_name = file_list[i] # os.path.split(os.path.join(wav_dir,file_list[i]))[1]
     if '~' in lab_name:
         continue
     with open(os.path.join(label_path, file_list[i]), 'r') as lab_f:
@@ -78,6 +78,8 @@ for i in range(len(file_list)):
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
             wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
+        string = '\t'+wave_name+'\n'
+        log.write(string)
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
         for j in xrange(len(lines)):
@@ -90,7 +92,7 @@ for i in range(len(file_list)):
                     length = stop - start
                 else:
                     length = (stop - start) / 10.0 ** 7
-                audio = f.read_frames(freq * length)
+                audio = f.read_frames(freq*(length))
                 if label in label_dic:
                     if time < threshold:
                         # energy = np.sum(audio ** 2, 0) / len(audio)
@@ -129,16 +131,14 @@ for i in range(len(file_list)):
                 raise
     print("Size of data_vector: ", data_vector.shape)
 
-data_vector = data_vector[1:,:]
+data_vector = data_vector[1:, :]
 label_vector = label_vector[1:]
-# Feature Standardization
-#data_vector = preproc.scale(data_vector)
-total_L_sec = stop / (10.0 ** 7)
+total_L_sec = stop/(10.0**7)
 total_N = total_L_sec/window_step
 obj = [data_vector, label_vector]
 # Now write to file, for pdnn learning
-target_name = os.path.join(target_path,"data/"+name_var+'.pickle.gz')
-cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
+target_name = os.path.join(target_path, name_var+'.pickle.gz')
+cPickle.dump(obj, gzip.open(target_name, 'wb'), cPickle.HIGHEST_PROTOCOL)
 
 string = '\n======= data description:\n'
 log.write(string)

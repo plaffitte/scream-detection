@@ -4,11 +4,14 @@
 echo
 START=$(date +%s)
 echo Simulation starts at: `date`
-MODE_TEST_DEBUG=0
+MODE_TEST_DEBUG=$1
 namethisfic=`basename "$0"`
 curdir="$( cd "$( dirname "${BASH_SOURCE[0] }" )" && pwd )"
 # two variables you need to set
 pdnndir=$curdir/Software/pdnn  # pointer to PDNN
+export PYTHONPATH=$PYTHONPATH:$pdnndir
+export PYTHONPATH=$PYTHONPATH:$curdir/Scripts
+export PYTHONPATH=$PYTHONPATH:$curdir/interface_latex
 device=cpu
 pythoncmd="nice -n19  /usr/bin/python -u"
 
@@ -16,8 +19,8 @@ pythoncmd="nice -n19  /usr/bin/python -u"
 # For regular single environment classification
 classes="{Conversation,Shouting,Noise}"
 # For multi environment classification
-classes_1="{NO_SPEECH,SPEECH,SHOUT}"
-classes_2="{PARKED,COMP_START,START_UP_SPEED,STOP_SPEED,CONTACTOR,COMP_BRAKE}"
+# classes_1="{NO_SPEECH,SPEECH,SHOUT}"
+# classes_2="{PARKED,COMP_START,START_UP_SPEED,STOP_SPEED,CONTACTOR,COMP_BRAKE}"
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
 window_size=0.025 # in seconds, size of MFCC window
@@ -34,11 +37,10 @@ coucheDNN="400:256:3"
 layerNumberRBM='0'
 layerNumberDNN='3'
 epoch_numberRBM=0
-epoch_numberDNN=5
-lambda="D:0.1:0.8:0.2,0.05" # "C:0.08:100"
+lambda="C:0.08:2" #"D:0.1:0.8:0.2,0.05" #
 
 ###################################################################
-rep_classes=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'``echo $classes_2 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
 wst=$(echo "$window_step * 1000" |bc -l)
 wsi=$(echo "$window_size * 1000" |bc -l)
 window_steptxt=${wst/.000/m}
@@ -101,16 +103,17 @@ else
   flag=1
 fi
 
+######################## CREATE DATASET ###############################
 echo $param_test > $rep_classes/log.txt
 echo $rep_classes
 STEP1_START=$(date +%s)
 if [ $flag -eq 1 ] ; then
     python $curdir/Scripts/format_pickle_data.py --data_type "train" --rep_test $rep_classes \
-                        --param $param_test --classes $classes --N $Nc
+                        --param $param_test --classes $classes
     python $curdir/Scripts/format_pickle_data.py --data_type "test" --rep_test $rep_classes \
-                        --param $param_test --classes $classes --N $Nc
+                        --param $param_test --classes $classes
     python $curdir/Scripts/format_pickle_data.py --data_type "valid" --rep_test $rep_classes \
-                        --param $param_test --classes $classes --N $Nc
+                        --param $param_test --classes $classes
 fi
 STEP1_END=$(date +%s)
 
@@ -122,6 +125,8 @@ else
     cp $curdir/$namethisfic $rep_classes/$coucheRBMtxt/$namethisfic
 fi
 STEP2_START=$(date +%s)
+
+######################## PRE TRAINING ###############################
 if [ "$ptr" -ne 0 ]; then
   python $pdnndir/cmds/run_RBM.py --train_data "$rep_classes/train.pickle.gz" --nnet_spec $coucheRBM \
                                   --wdir $rep_classes/$coucheRBMtxt --epoch_number $epoch_numberRBM --batch_size 128 \
@@ -131,7 +136,7 @@ if [ "$ptr" -ne 0 ]; then
 fi
 STEP2_END=$(date +%s)
 
-# train DNN model
+######################## TRAIN DNN ###############################
 if [ -d $rep_classes/$coucheRBMtxt/$coucheDNNtxt ]; then
     echo "Model DBN $coucheRBMtxt/$coucheDNNtxt exist."
     echo "The DBN model will be loaded"
@@ -141,17 +146,17 @@ else
 fi
 echo "Training the DNN model ..."
 STEP3_START=$(date +%s)
-python $pdnndir/cmds/run_DNN.py --classes $classes --train-data "$rep_classes/train.pickle.gz" \
+python $pdnndir/cmds/run_DNN.py --train-data "$rep_classes/train.pickle.gz" \
                                 --valid-data "$rep_classes/valid.pickle.gz" \
                                 --nnet-spec $coucheDNN --wdir $rep_classes/$coucheRBMtxt/$coucheDNNtxt \
-                                --l2-reg 0.001 --lrate "C:0.1:$epoch_numberDNN" --model-save-step 10 \
+                                --l2-reg 0.001 --lrate $lambda --model-save-step 10 \
                                 --ptr-layer-number $layerNumberRBM --ptr-file $rep_classes/$coucheRBMtxt/rbm.param \
                                 --param-output-file  $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.param \
                                 --cfg-output-file $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.cfg \
                                 > $rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.training.log
 STEP3_END=$(date +%s)
 
-# classification on the test set
+######################## CLASSIFICATION ON TEST DATASET ###############################
 echo "Do classification on the test set ..."
 STEP4_START=$(date +%s)
 python $pdnndir/cmds/run_Extract_Feats.py --data "$rep_classes/test.pickle.gz" \
@@ -162,7 +167,8 @@ STEP4_END=$(date +%s)
 
 mkdir $rep_classes/$coucheRBMtxt/$coucheDNNtxt/tex
 STEP5_START=$(date +%s)
-python show_results.py --pred_file "$rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.classify.pickle.gz" \
+echo $rep_classes
+python $curdir/Scripts/show_results.py --pred_file "$rep_classes/$coucheRBMtxt/$coucheDNNtxt/dnn.classify.pickle.gz" \
            --datapath $rep_classes \
            --classes $classes \
            --filepath $rep_classes/$coucheRBMtxt/$coucheDNNtxt/tex\

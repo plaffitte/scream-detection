@@ -47,9 +47,9 @@ class PickleDataRead(object):
         if self.feat_mat is None or len(self.pfile_path_list) > 1:
             fopen = smart_open(pfile_path, 'rb')
             test = cPickle.load(fopen)
-            if numpy.shape(test)[0] == 2:
+            if len(test) == 2:
                 self.feat_mat, self.label_vec = test
-            elif numpy.shape(test)[0] == 3:
+            elif len(test) == 3:
                 self.feat_mat, self.label_vec, unused = test
             fopen.close()
             shared_x, shared_y = shared_xy

@@ -100,7 +100,7 @@ class RNN(object):
         input = T.ftensor3()
         mask = T.imatrix()
         mask_int = [(mask & 1).nonzero(), (mask & 2).nonzero()]
-        mask_float = [T.cast((mask & 1).dimshuffle((1, 0)).reshape((mask.shape[1], mask.shape[0], 1)), theano.config.floatX),
+        mask_float = [T.cast((mask & 1).xdimshuffle((1, 0)).reshape((mask.shape[1], mask.shape[0], 1)), theano.config.floatX),
                       T.cast(((mask & 2) / 2).dimshuffle((1, 0)).reshape((mask.shape[1], mask.shape[0], 1)), theano.config.floatX)]
 
         def step_rnn(x_t, mask, h_tm1, W, h0):
@@ -183,8 +183,8 @@ class RNN(object):
 
         # Create functions to be called from outside
         self.train = theano.function(
-                         inputs = [input, mask, t, lrate],
-                         outputs = [cost, y, gradient[5], h, t, self.Wout, self.Bout],
+                         inputs = [input, mask, label, lrate],
+                         outputs = [cost, y, gradient[5], h, t, h.dot(self.Wout), self.Wout],
                          updates = updates,
                      )
 
