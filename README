@@ -50,10 +50,12 @@ $ source activate py2k7theano
 $ pip install scikits.audiolab==0.11.0
 
 ## RECUPERATION DU CODE
-#------------------------------------
+#---------------------------------
 $ git clone git+ssh://git@git.renater.fr:2222/dnnforcasa.git
 
 ## AJOUT DES FICHIERS AUDIO ET LABELS
-#--------------------------------------------------
-copie des fichiers de labels et audio dans /Data_Base
+#-------------------------------------------------
+-> A effectuer avant de lancer des simulations: 
+	- créer le dossier Data_Base/wav/	
+	- copier les fichiers audio dans /Data_Base/wav
 
