@@ -2,25 +2,24 @@ $Revision: 29572 $
 $Author: cocheril $
 $Date: 2016-11-29 15:18:01 +0100 (Tue, 29 Nov 2016) $
 
-## REQUIS
+## REQUIS ##
 #----------------------------------------
 
 ## Miniconda
 $ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh  ## ne pas oublier l'export dans la variable PATH comme indiqué à la fin
 
-## Dépendances
-# Ubuntu
+## Dépendances ##
+
+- Ubuntu
 $ sudo apt-get install libsndfile1-dev subversion
-#CentOS
+
+- CentOS
 $ yum install libsndfile-devel libsndfile-utils
 
-## Codes
-$ svn co https://svn.inrets.fr/svnvda/LEOST/DSD .
 
-
-## INSTALLATION (STEP-BY-STEP)
-#----------------------------------------
+## INSTALLATION (STEP-BY-STEP) WITHOUT PRE-DEFINED CONDA ENV ##
+##------------------------------------------------------------------------------------##
 
 ## Python v2.7
 $ conda create -n py2k7theano python=2.7
@@ -38,9 +37,10 @@ $ pip install python-speech-features scikits.audiolab
 $ pip install graphviz matplotlib
 $ pip install bitsets concepts
 
+				## OU ##
 
-## INSTALLATION (FROM FILE)
-#----------------------------------------
+## INSTALLATION (FROM CONDA ENV FILE) ##
+#---------------------------------------------------##
 
 ## Python + packages (except scikits.audiolab)
 $ conda env create -f environment.yml
@@ -49,13 +49,35 @@ $ conda env create -f environment.yml
 $ source activate py2k7theano
 $ pip install scikits.audiolab==0.11.0
 
-## RECUPERATION DU CODE
-#---------------------------------
+
+## RECUPERATION DU CODE ##
+#--------------------------------- ##
+
 $ git clone git+ssh://git@git.renater.fr:2222/dnnforcasa.git
 
-## AJOUT DES FICHIERS AUDIO ET LABELS
-#-------------------------------------------------
--> A effectuer avant de lancer des simulations: 
+## AJOUT DES FICHIERS AUDIO ET LABELS ##
+##------------------------------------------------##
+- A effectuer avant de lancer des simulations: 
 	- créer le dossier Data_Base/wav/	
 	- copier les fichiers audio dans /Data_Base/wav
 
+## EXECUTION DU CODE ##
+##----------------------------##
+
+~$cd script/
+
+- pour lancer un DBN:
+~/script$ chmod +x rbm_audio_classification.sh 
+~/script$ ./rbm_audio_classification.sh 
+
+- pour lancer un CNN:
+~/script$ chmod +x runn_CNN.sh
+~/script$ ./runn_CNN.sh
+
+- pour lancer un RNN/LSTM:
+~/script$ chmod +x run_rnn_yun.sh
+~/script$ ./run_rnn_yun.sh
+
+- RNN/LSTM avec contexte:
+~/script$ chmod +x run_rnn_yun_context.sh
+~/script$ ./run_rnn_yun_context.sh

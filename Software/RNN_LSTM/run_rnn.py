@@ -5,20 +5,6 @@ import cPickle
 from util_func import parse_arguments, log, parse_classes
 from liblatex import *
 
-
-# def parse_classes(class_str,N):
-#     class_list = []
-#     start = 1
-#     i=0
-#     for j in range(N):
-#         while class_str[i] not in [',', '}']:
-#             i += 1
-#         end = i
-#         class_list.append(class_str[start:end])
-#         start = i+1
-#         i += 1
-#     return class_list
-
 # ############################### Read Data ###############################
 def read(data):
     if data.endswith('.gz'):
@@ -98,14 +84,6 @@ for k in range(n_epoch):
     for i in range(n_batches):
         cost, output, gradient, hidden_act, t, x_1, wout = rnn.train(input[i], mask[i], label[i], lrate)
         rnn.save(filesave)
-        # if not isinstance(cost, float):
-        #     print('----> hidden activation: ', hidden_act)
-        #     print('----> Cost: ', cost)
-        #     print('----> Predictions from network: ', output)
-        #     print('----> Labels: ', t)
-        #     print('----> Inputs: ', input[i])
-        #     print('----> Gradient: ', gradient)
-        #     print('\n\n\n\n')
         train_cost.append(cost)
         prob = rnn.predict(input[i], mask[i])
         for jj in range(prob.shape[1]):
@@ -122,15 +100,13 @@ for k in range(n_epoch):
     confusion_matrix_train = 100 * confusion_matrix_train / class_occurrence_train
     train_error_rate = 100 * (1.0 - correct_number_train / n_data)
     log('Error rate on training set is ' + str(train_error_rate) + ' (%)')
-    log('Confusion Matrix on training set is \n\n ' + str(confusion_matrix_train) + ' (%)\n')
+    log('Confusion Matrix on training set is \n\n ' + str(np.around(confusion_matrix_train, 2)) + ' (%)\n')
     n_data = 0
     for i in range(n_valid):
         prob = rnn.predict(valid[i], mask_valid[i])
         for jj in range(prob.shape[1]):
             for kk in range(prob.shape[0]):
                 prediction = (-prob[kk, jj, :]).argsort()
-                # result.append([])
-                # result[-1] = prediction
                 label_sorted = (-label_valid[i][kk, jj, :]).argsort()
                 if any(label_valid[i][kk, jj, :]):
                     n_data += 1
@@ -141,7 +117,7 @@ for k in range(n_epoch):
     confusion_matrix_valid = 100 * confusion_matrix_valid / class_occurrence_valid
     valid_error_rate = 100 * (1.0 - correct_number_valid / n_data)
     log('Error rate is on validation set is ' + str(valid_error_rate) + ' (%)')
-    log('Confusion Matrix on validation set is \n\n ' + str(confusion_matrix_valid) + ' (%)\n')
+    log('Confusion Matrix on validation set is \n\n ' + str(np.around(confusion_matrix_valid, 2)) + ' (%)\n')
     if k != 0:
         if train_error_rate > (old_training_error + delta_train):
             print('--->>> Network is diverging!')
@@ -155,7 +131,6 @@ for k in range(n_epoch):
             break
 
 ### IMPLEMENT STOPPING CRITERION ########
-
     old_training_error = train_error_rate
     old_valid_error = valid_error_rate
 # cPickle.dump(result, gzip.open(file, 'wb'))
@@ -188,10 +163,10 @@ log('Error rate is ' + str(error_rate) + ' (%)')
 log('Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n')
 rnn.save(filesave)
 N = len(confusion_matrix) # number of classes =pred_mat.shape[1] ?
-class_list = parse_classes(classes,N)
+class_list = parse_classes(classes)
 Docpath = fileTex
 TabPath = fileTex
 Docname = "Confusion_matrix"
 TabName = "table"
-texfile = DocTabTex(confusion_matrix,class_list,"Tab01","legende",Docpath,TabPath,Docname,TabName,option='t',commentaire="%test commentaires")
+texfile = DocTabTex(np.around(confusion_matrix, 2), class_list,"Tab01","legende",Docpath,TabPath,Docname,TabName,option='t',commentaire="%test commentaires")
 texfile.creatTex();
