@@ -96,7 +96,7 @@ if __name__ == '__main__':
             class_occurrence[0, labels[i]] += 1
         confusion_matrix = 100 * confusion_matrix / class_occurrence.T
         log('-->> Epoch %d, training error %f ' % (cfg.lrate.epoch, 100 * numpy.mean(train_error)) + '(%)')
-        log('Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n')
+        log('Confusion Matrix is \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
         # validation
         valid_error, pred2 = validate_by_minibatch(valid_fn, cfg)
         labels = cfg.valid_sets.label_vec
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         error_rate = 100 * (1.0 - correct_number / pred2.shape[0])
         log('-->> Epoch %d, lrate %f, validation error %f ' % (cfg.lrate.epoch, cfg.lrate.get_rate(),
                                                             100 * numpy.mean(valid_error)) + '(%)')
-        log('Confusion Matrix: \n\n ' + str(confusion_matrix) + ' (%)\n')
+        log('Confusion Matrix: \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
         cfg.lrate.get_next_rate(current_error = 100 * numpy.mean(valid_error))
         # output nnet parameters and lrate, for training resume
         if cfg.lrate.epoch % cfg.model_save_step == 0:

@@ -122,8 +122,8 @@ echo "Training the CNN model ..."
 STEP3_START=$(date +%s)
 python $pdnndir/cmds/run_CNN.py --train-data "$rep_classes/train.pickle.gz" \
                                 --valid-data "$rep_classes/valid.pickle.gz" --conv_nnet_spec $cnn_arch\
-                                --nnet-spec $coucheDNN --wdir $rep_classes/$coucheCNNtxt/$coucheDNNtxt \
-                                --l2-reg 0.001 --lrate $lambda --model-save-step 10 --ptr-layer-number 0 \
+                                --nnet-spec $coucheDNN --wdir $rep_classes/$coucheCNNtxt-$coucheDNNtxt \
+                                --l2-reg 0.001 --lrate $lambda --model-save-step 1 --ptr-layer-number 0 \
                                 --param-output-file  $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.param \
                                 --cfg-output-file $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.cfg \
                                 > $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.training.log
@@ -134,8 +134,8 @@ echo "Do classification on the test set ..."
 STEP4_START=$(date +%s)
 python $pdnndir/cmds/run_Extract_Feats.py --data "$rep_classes/test.pickle.gz" \
                                           --nnet-param  $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.param \
-                                          --nnet-cfg  $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.cfg \
-                                          --output-file "$rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.classify.pickle.gz" --layer-index -1 \
+                                          --nnet-cfg  $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.cfg --layer-index -1 \
+                                          --output-file "$rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.classify.pickle.gz"  \
                                           --batch-size 100 >  $rep_classes/$coucheCNNtxt-$coucheDNNtxt/cnn.testing.log;
 STEP4_END=$(date +%s)
 

@@ -4,7 +4,6 @@ import os
 import cPickle, gzip
 import numpy as np
 import util_func as utils
-
 from liblatex import *
 
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
@@ -42,7 +41,7 @@ for i in xrange(pred_mat.shape[0]):
 confusion_matrix = 100*confusion_matrix / class_occurrence.T
 error_rate = 100 * (1.0 - correct_number / pred_mat.shape[0])
 print 'Error rate is ' + str(error_rate) + ' (%)'
-print 'Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n'
+print 'Confusion Matrix is \n\n ' + str(np.around(confusion_matrix, 2)) + ' (%)\n'
 if '+' in class_str:
     mult = class_str.split('+')
     class_list =[]
@@ -70,5 +69,5 @@ Docpath = filepath
 TabPath = filepath
 Docname = nametex
 TabName = "table"
-texfile = DocTabTex(confusion_matrix,class_list,"Tab01","legende",Docpath,TabPath,Docname,TabName,option='t',commentaire="%test ommanataire")
+texfile = DocTabTex(np.around(confusion_matrix, 2), class_list,"Tab01","legende",Docpath,TabPath,Docname,TabName,option='t',commentaire="%test ommanataire")
 texfile.creatTex();
