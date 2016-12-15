@@ -19,7 +19,7 @@ export PYTHONPATH=$PYTHONPATH:$rnndir
 export PYTHONPATH=$PYTHONPATH:$latexdir
 
 ######################## FEATURES PARAMS ##############################
-classes="{Conversation,Shouting,Noise,BG_voice,Making_Of,Clavier,Compressor_Start,Laugh,Journal,Scream}"
+classes="{NO_SPEECH,SPEECH,SHOUT}"
 rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
@@ -41,7 +41,7 @@ compute_deltas=False
 # ################### NETWORK PARAMS ###########################
 Nlayers=1                 # number of layers
 Ndirs=1                     # unidirectional or bidirectional
-Nh=56    4                # hidden layer size
+Nh=56                      # hidden layer size
 Ah="lstm"                 # hidden unit activation (e.g. relu, tanh, lstm)
 Ay="softmax"            # output unit activation (e.g. linear, sigmoid, softmax)
 predictPer="frame"   # frame or sequence

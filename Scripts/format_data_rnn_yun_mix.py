@@ -190,10 +190,10 @@ for i in xrange(len(file_list)):
                                             restart  =True
                                         label_vector = np.concatenate((label_vector, labels.astype(np.float32)))
                                         data_vector = np.concatenate((data_vector, data.astype(np.float32)))
-                                        # interm = np.zeros(len(labels))
-                                        # interm[0] = 1
-                                        # interm[-1] = 2
-                                        # mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
+                                        interm = np.zeros(len(labels))
+                                        interm[0] = 1
+                                        interm[-1] = 2
+                                        mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
                                         if restart:
                                             re_use = False
                                         else:
@@ -221,7 +221,7 @@ for i in xrange(len(file_list)):
                                             interm = np.zeros(len(labels))
                                             interm[0] = 1
                                             interm[-1] = 2
-                                            # mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
+                                            mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
                                         # if data bigger than max_sequence_len, chop up in chuncks of lentgh max_sequence_len
                                         else:
                                             print("current data exceeds max sequence length, chopping")
@@ -237,11 +237,10 @@ for i in xrange(len(file_list)):
                                                     interm = np.zeros(L)
                                                     interm[0] = 1
                                                     interm[-1] = 2
-                                                    # mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
+                                                    mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
                                                 else:
                                                     pass
                                         re_use = False
-                                print("-->length of data_vector at the end of the loop:", data_vector.shape)
                         else:
                             print("label not in label dic")
                         line_index += 1
@@ -255,22 +254,13 @@ for i in xrange(len(file_list)):
                     except:
                         print "Unexpected error:", sys.exc_info()[0]
                         raise
-                interm = np.zeros(max_batch_len)
-                interm[0] = 1
-                interm[padding_len] = 2
-                interm[padding_len +1 :]
+                print("-->length of data_vector at the end of the loop:", data_vector.shape)
                 if end_file and len(data_vector) < max_batch_len + 1:
                     padding_len = zero_pad()
-                print("This is data_vector at the end")
-                if plot:
-                    plt.imshow(data_vector[1:, :].T, aspect='auto')
-                    plt.plot(interm)
-                    plt.show()
                 data_tensor[kk, :, :] = data_vector[1:, :]
                 label_tensor[kk, :, :] = label_vector[1:, :]
+                mask_matrix[kk, :] = mask_vector[1:]
                 # label_tensor[kk, :] = label_vector[1:]
-                # mask_matrix[kk, :] = mask_vector[1:]
-                mask_matrix[kk, :] = interm
                 if end_file == True:
                     break
             if stream_cnt == n_stream-1:
