@@ -17,6 +17,8 @@
 import theano.tensor as T
 from learn_rates import LearningRateConstant, LearningRateExpDecay, LearningMinLrate, LearningFixedLrate, LearningRateAdaptive
 from io_func import smart_open
+import numpy
+from util_func import log
 
 def string_2_bool(string):
     return len(string) > 0 and string[0] in 'TtYy1'     # True, true, Yes, yes, 1
@@ -210,3 +212,51 @@ def parse_nnet_spec_mtl(shared_spec, indiv_spec):
     for n in xrange(len(task_split)):
         nnet_spec_array.append(shared_spec + ':' + task_split[n])
     return nnet_spec_array, len(shared_split)-1
+
+def format_results(error, pred, labels, multi_label, cfg):
+    correct_number = 0.0
+    confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
+    class_occurrence = numpy.zeros((1, cfg.n_outs))
+    if multi_label:
+        recall_matrix = numpy.zeros(cfg.n_outs)
+        false_pred_matrix = numpy.zeros(cfg.n_outs)
+        precision_matrix = numpy.zeros(cfg.n_outs)
+        N_pred_true = numpy.zeros(cfg.n_outs)
+        N_pred_false = numpy.zeros(cfg.n_outs)
+        [a, b, c] = numpy.shape(pred)
+        N_samples = 0
+        for i in range(a):
+            for j in range(b):
+                out=numpy.array(pred[i][j],dtype=int)
+                lab=numpy.array(labels[i][j],dtype=int)
+                res=~(~(out==1)&lab) | (out&~(lab==1))
+                correct_number += len(numpy.where(res))
+                for k in range(cfg.n_outs):
+                    if lab[k]:
+                        class_occurrence[0, k] += 1
+                        if out[k]==lab[k]:
+                            N_pred_true[k] += 1
+                    else:
+                        if out[k]!=lab[k]:
+                            N_pred_false[k] += 1
+                N_samples += 1
+        recall_matrix = 100 * N_pred_true / class_occurrence.T[:, 0]
+        precision_matrix = 100 * N_pred_true / (N_pred_false + N_pred_true)
+        false_pred_matrix = 100 * N_pred_false / (N_samples - class_occurrence.T[:, 0])
+        log('Error %f ' % (100 * numpy.mean(error)) + '(%)')
+        log('Accuracy (Recall) Matrix: \n\n ' + str(numpy.around(recall_matrix, 2)) + ' (%)\n')
+        log('Precision Matrix: \n\n ' + str(numpy.around(precision_matrix, 2)) + ' (%)\n')
+        log('False Predictions Matrix: \n\n ' + str(numpy.around(false_pred_matrix, 2)) + ' (%)\n')
+    else:
+        for i in range(len(pred)):
+            p_sorted = pred[i]
+            if p_sorted == labels[i]:
+                correct_number += 1
+                confusion_matrix[labels[i], labels[i]] += 1
+            else:
+                confusion_matrix[labels[i], p_sorted] += 1
+            class_occurrence[0, labels[i]] += 1
+        confusion_matrix = 100 * confusion_matrix / class_occurrence.T
+        print 100 * numpy.mean(error), cfg.lrate.epoch
+        log('Error %f ' % (100 * numpy.mean(error)) + '(%)')
+        log('Confusion Matrix \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
