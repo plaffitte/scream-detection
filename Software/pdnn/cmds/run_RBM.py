@@ -46,21 +46,22 @@ if __name__ == '__main__':
     train_data_spec = arguments['train_data']
     nnet_spec = arguments['nnet_spec']
     wdir = arguments['wdir']
+    multi_label = arguments['multi_label']
 
     # numpy random generator
-    numpy_rng = numpy.random.RandomState(89677)
+    numpy_rng = numpy.random.RandomState()
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
     log('> ... initializing the model')
 
     # parse network configuration from arguments, and initialize data reading
-    cfg = RBMConfig()
+    cfg = RBMConfig(multi_label)
     cfg.parse_config_common(arguments)
     cfg.init_data_reading(train_data_spec)
 
     # we also need to set up a DNN model, whose parameters are shared with RBM, for 2 reasons:
     # first, we can use DNN's model reading and writing functions, instead of designing these functions for RBM specifically
-    # second, DNN generates 
-    cfg_dnn = NetworkConfig()
+    # second, DNN generates
+    cfg_dnn = NetworkConfig(multi_label)
     cfg_dnn.n_ins = cfg.n_ins; cfg_dnn.hidden_layers_sizes = cfg.hidden_layers_sizes; cfg_dnn.n_outs = cfg.n_outs
     dnn = DNN(numpy_rng=numpy_rng, theano_rng = theano_rng, cfg = cfg_dnn)
 
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     log('> ... getting the pre-training functions')
     pretraining_fns = srbm.pretraining_functions(train_set_x=cfg.train_x, batch_size=cfg.batch_size,
                                                  k = 1, weight_cost = 0.0002)
- 
+
     start_layer_index = 0
     start_epoch_index = 0
     if os.path.exists(wdir + '/nnet.tmp') and os.path.exists(wdir + '/training_state.tmp'):
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         _file2nnet(dnn.layers, filename = wdir + '/nnet.tmp')
 
     log('> ... training the model')
-    log('> r_cost = reconstruction cost, fe_cost = (approximate) value of free energy function') 
+    log('> r_cost = reconstruction cost, fe_cost = (approximate) value of free energy function')
     # pre-train layer-wise
     for i in xrange(start_layer_index, cfg.ptr_layer_number):
         if (srbm.rbm_layers[i].is_gbrbm()):
@@ -121,7 +122,7 @@ if __name__ == '__main__':
     # output the model into Kaldi-compatible format
     if cfg.kaldi_output_file != '':
         dnn.write_model_to_kaldi(cfg.kaldi_output_file)
-        log('> ... the final Kaldi model is ' + cfg.kaldi_output_file) 
+        log('> ... the final Kaldi model is ' + cfg.kaldi_output_file)
 
     # finally remove the training-resuming files
     os.remove(wdir + '/nnet.tmp')

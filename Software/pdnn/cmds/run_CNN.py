@@ -42,8 +42,12 @@ if __name__ == '__main__':
     conv_nnet_spec = arguments['conv_nnet_spec']
     nnet_spec = arguments['nnet_spec']
     wdir = arguments['wdir']
+    multi_label = arguments['multi_label']
+    if multi_label=="True": multi_label = True
+    else:   multi_label = False
+
     # parse network configuration from arguments, and initialize data reading
-    cfg = NetworkConfig(); cfg.model_type = 'CNN'
+    cfg = NetworkConfig(multi_label); cfg.model_type = 'CNN'
     cfg.parse_config_cnn(arguments, '10:' + nnet_spec, conv_nnet_spec)
     cfg.init_data_reading(train_data_spec, valid_data_spec)
 
@@ -61,7 +65,7 @@ if __name__ == '__main__':
         cfg.lrate = _file2lrate(wdir + '/training_state.tmp')
         log('> ... found nnet.tmp and training_state.tmp, now resume training from epoch ' + str(cfg.lrate.epoch))
 
-    numpy_rng = numpy.random.RandomState(89677)
+    numpy_rng = numpy.random.RandomState()
     theano_rng = RandomStreams(numpy_rng.randint(2 ** 30))
     log('> ... initializing the model')
     # construct the cnn architecture
@@ -81,7 +85,7 @@ if __name__ == '__main__':
     log('> ... finetuning the model')
     while (cfg.lrate.get_rate() != 0):
         # one epoch of sgd training
-        train_error, pred = train_sgd(train_fn, cfg)
+        train_error, pred, _ = train_sgd(train_fn, cfg)
         labels = cfg.train_sets.label_vec
         correct_number = 0.0
         confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
@@ -98,7 +102,7 @@ if __name__ == '__main__':
         log('-->> Epoch %d, training error %f ' % (cfg.lrate.epoch, 100 * numpy.mean(train_error)) + '(%)')
         log('Confusion Matrix is \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
         # validation
-        valid_error, pred2 = validate_by_minibatch(valid_fn, cfg)
+        valid_error, pred2, _ = validate_by_minibatch(valid_fn, cfg)
         labels = cfg.valid_sets.label_vec
         correct_number = 0.0
         confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
