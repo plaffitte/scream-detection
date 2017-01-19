@@ -37,6 +37,7 @@ def validate_by_minibatch(valid_fn, cfg):
     valid_xy = cfg.valid_xy
     batch_size = cfg.batch_size
     valid_error = []
+    labels = []
     batch_size = cfg.batch_size
     index = 0
     prediction = []
@@ -48,23 +49,19 @@ def validate_by_minibatch(valid_fn, cfg):
             error_value = valid_fn(index=index, size=seq_size)
             valid_error.append(error_value)
 
-    # elif cfg.model_type == 'DNN':
-    #     while (not valid_sets.is_finish()):
-    #         valid_sets.load_next_partition(valid_xy)
-    #         for batch_index in xrange(valid_sets.cur_frame_num / batch_size):  # loop over mini-batches
-    #             error_value, pred = valid_fn(index=batch_index)
-    #             valid_error.append(error_value)
-    #             prediction = np.concatenate((prediction, pred))
-
     else:
         while (not valid_sets.is_finish()):
             valid_sets.load_next_partition(valid_xy)
             for batch_index in xrange(valid_sets.cur_frame_num / batch_size):  # loop over mini-batches
-                error_value, pred = valid_fn(index=batch_index)
+                error_value, pred, label = valid_fn(index=batch_index)
                 valid_error.append(error_value)
-                prediction = np.concatenate((prediction, pred))
+                labels.append(label)
+                if cfg.multi_label is True:
+                    prediction.append(pred)
+                else:
+                    prediction = np.concatenate((prediction, pred))
     valid_sets.initialize_read()
-    return valid_error, prediction
+    return valid_error, prediction, labels
 
 # one epoch of mini-batch based SGD on the training data
 # train_fn: the compiled training function
@@ -94,35 +91,30 @@ def train_sgd(train_fn, cfg):
     learning_rate = cfg.lrate.get_rate()
     momentum = cfg.momentum
     train_error = []
+    labels = []
     prediction = []
 
     if cfg.model_type == 'RNN':
         while (not train_sets.is_finish()):
             train_sets.load_next_partition(train_xy)
             seq_size = train_sets.cur_frame_num
-            print("cur training sequence size is:", seq_size)
             error_value, pred = train_fn(index=index, size=seq_size, learning_rate=learning_rate,
                                          momentum=momentum)
             train_error.append(error_value)
             prediction.append(pred)
 
-    elif cfg.model_type == 'DNN':
+    else:
         while (not train_sets.is_finish()):
             train_sets.load_next_partition(train_xy)
             for batch_index in xrange(train_sets.cur_frame_num / batch_size):  # loop over mini-batches
-                error_value, pred = train_fn(index=batch_index, learning_rate=learning_rate,
+                error_value, pred, label = train_fn(index=batch_index, learning_rate=learning_rate,
                                              momentum=momentum)
                 train_error.append(error_value)
-                prediction = np.concatenate((prediction, pred))
-
-    elif cfg.model_type == 'CNN':
-        while (not train_sets.is_finish()):
-            train_sets.load_next_partition(train_xy)
-            for batch_index in xrange(train_sets.cur_frame_num / batch_size):  # loop over mini-batches
-                error_value, pred = train_fn(index=batch_index, learning_rate=learning_rate,
-                                             momentum=momentum)
-                train_error.append(error_value)
-                prediction = np.concatenate((prediction, pred))
+                labels.append(label)
+                if cfg.multi_label is True:
+                    prediction.append(pred)
+                else:
+                    prediction = np.concatenate((prediction, pred))
 
     train_sets.initialize_read()
-    return train_error, prediction
+    return train_error, prediction, labels
