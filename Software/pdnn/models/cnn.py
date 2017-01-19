@@ -125,7 +125,7 @@ class CNN(object):
 
         train_fn = theano.function(inputs=[index, theano.Param(learning_rate, default = 0.0001),
               theano.Param(momentum, default = 0.5)],
-              outputs=[self.errors, self.fc_dnn.logLayer.y_pred],
+              outputs=[self.errors, self.fc_dnn.logLayer.y_pred, train_set_y[index * batch_size:(index + 1) * batch_size]],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
@@ -134,7 +134,7 @@ class CNN(object):
                         (index + 1) * batch_size]})
 
         valid_fn = theano.function(inputs=[index],
-              outputs=[self.errors, self.fc_dnn.logLayer.y_pred],
+              outputs=[self.errors, self.fc_dnn.logLayer.y_pred, valid_set_y[index * batch_size:(index + 1) * batch_size]],
               givens={
                 self.x: valid_set_x[index * batch_size:
                                     (index + 1) * batch_size],

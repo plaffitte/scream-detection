@@ -21,20 +21,21 @@ from utils import parse_lrate, parse_activation, parse_conv_spec, activation_to_
 
 class RBMConfig():
 
-    def __init__(self):
+    def __init__(self, multi_label):
 
-        # parameters related with training 
+        # parameters related with training
         self.epochs = 5                  # number of training epochs for each layer
         self.batch_size = 128            # size of mini-batches
         self.gbrbm_learning_rate = 0.005 # learning rate for Gaussian-Bernoulli RBM
         self.learning_rate = 0.08        # learning rate for Bernoulli-Bernoulli RBM
 
-        self.initial_momentum = 0.5     # initial momentum 
+        self.initial_momentum = 0.5     # initial momentum
         self.final_momentum = 0.9       # final momentum
         self.initial_momentum_epoch = 5 # for how many epochs do we use initial_momentum
 
         self.ptr_layer_number = 0       # number of layers to be trained
         self.first_layer_gb = True      # whether the fist layer is a Gaussian-Bernoulli RBM
+        self.multi_label = multi_label
 
         # interfaces for the training data
         self.train_sets = None
@@ -42,7 +43,7 @@ class RBMConfig():
         self.train_x = None
         self.train_y = None
 
-        # interfaces for validation data. we don't do validation for RBM, so these variables will be None 
+        # interfaces for validation data. we don't do validation for RBM, so these variables will be None
         # we have these variables because we want to use the _cfg2file function from io_func/model_io.py
         self.valid_sets = None
         self.valid_xy = None
@@ -62,13 +63,13 @@ class RBMConfig():
     # initialize pfile reading. TODO: inteference *directly* for Kaldi feature and alignment files
     def init_data_reading(self, train_data_spec):
         train_dataset, train_dataset_args = read_data_args(train_data_spec)
-        self.train_sets, self.train_xy, self.train_x, self.train_y = read_dataset(train_dataset, train_dataset_args)
+        self.train_sets, self.train_xy, self.train_x, self.train_y = read_dataset(train_dataset, train_dataset_args, self.multi_label)
 
-    # initialize the activation function   
+    # initialize the activation function
     def init_activation(self):
         self.activation = parse_activation(self.activation_text)
- 
-    # parse the arguments to get the values for various variables 
+
+    # parse the arguments to get the values for various variables
     def parse_config_common(self, arguments):
         if arguments.has_key('gbrbm_learning_rate'):
             self.gbrbm_learning_rate = float(arguments['gbrbm_learning_rate'])

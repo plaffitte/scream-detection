@@ -27,10 +27,11 @@ import theano.tensor as T
 class LogisticRegression(object):
     """ Class for multi-class logistic regression """
 
-    def __init__(self, input, n_in, n_out, W=None, b=None):
+    def __init__(self, input, n_in, n_out, multi_label=False, W=None, b=None):
 
         self.n_in = n_in
         self.n_out = n_out
+        self.multi_label = multi_label
 
         self.type = 'fc'
 
@@ -48,25 +49,38 @@ class LogisticRegression(object):
         self.delta_W = theano.shared(value = numpy.zeros_like(self.W.get_value(borrow=True)), name = 'delta_W')
         self.delta_b = theano.shared(value = numpy.zeros_like(self.b.get_value(borrow=True)), name = 'delta_b')
         # compute vector of class-membership probabilities in symbolic form
-        self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
+        if multi_label:
+            self.p_y_given_x = T.nnet.sigmoid(T.dot(input, self.W) + self.b)
+        else:
+            self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
         self.output = self.p_y_given_x
 
-        # compute prediction as class
-        self.y_pred = T.argmax(self.p_y_given_x, axis=1)
+        self.y_pred = theano.tensor.TensorVariable
+        if self.multi_label is True: # compute mutli-class prediction
+            self.y_pred = T.gt(self.p_y_given_x, 0.5)
+        else: # compute prediction as class
+            self.y_pred = T.argmax(self.p_y_given_x, axis=1)
 
         # parameters of the model
         self.params = [self.W, self.b]
         self.delta_params = [self.delta_W, self.delta_b]
 
     def negative_log_likelihood(self, y):
-        return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
+        if self.multi_label is True:
+            print("labels are two-dimensional")
+            return -T.mean(T.log(self.p_y_given_x) * y)
+        else:
+            print("labels are one-dimensional")
+            return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
 
     def errors(self, y):
         # check if y has same dimension of y_pred
         if y.ndim != self.y_pred.ndim:
-            # raise TypeError('y should have the same shape as self.y_pred',
+            raise TypeError('y should have the same shape as self.y_pred')
             #     ('y', target.type, 'y_pred', self.y_pred.type))
-            y = T.argmax(y)
+            # y = T.argmax(y)
+        if self.multi_label is True:
+            return T.mean(T.neq(self.y_pred, y))
         if y.dtype.startswith('int'):
             return T.mean(T.neq(self.y_pred, y))
         else:

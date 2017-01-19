@@ -29,7 +29,9 @@ from kaldi_io import KaldiDataRead
 
 def read_data_args(data_spec):
     elements = data_spec.split(",")
+    print elements
     pfile_path_list = glob.glob(elements[0])
+    print pfile_path_list
     dataset_args = {}
     # default settings
     dataset_args['type'] = 'pickle'
@@ -78,7 +80,7 @@ def read_data_args(data_spec):
             dataset_args[key] = value
     return pfile_path_list, dataset_args
 
-def read_dataset(file_path_list, read_opts):
+def read_dataset(file_path_list, read_opts, multi_label):
     if read_opts['type'] == 'pickle':
         data_reader = PickleDataRead(file_path_list, read_opts)
     elif read_opts['type'] == 'pfile':
@@ -91,7 +93,7 @@ def read_dataset(file_path_list, read_opts):
 
     data_reader.initialize_read(first_time_reading = True)
 
-    shared_xy = data_reader.make_shared()
+    shared_xy = data_reader.make_shared(multi_label)
     shared_x, shared_y = shared_xy
     shared_y = T.cast(shared_y, 'int32')
 

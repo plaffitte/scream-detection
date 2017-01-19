@@ -21,9 +21,10 @@ from utils import parse_lrate, parse_activation, parse_conv_spec, activation_to_
 
 class NetworkConfig():
 
-    def __init__(self):
+    def __init__(self, multi_label):
 
         self.model_type = 'DNN'
+        self.multi_label = multi_label
 
         self.batch_size = 256
         self.momentum = 0.5
@@ -90,12 +91,12 @@ class NetworkConfig():
     def init_data_reading(self, train_data_spec, valid_data_spec):
         train_dataset, train_dataset_args = read_data_args(train_data_spec)
         valid_dataset, valid_dataset_args = read_data_args(valid_data_spec)
-        self.train_sets, self.train_xy, self.train_x, self.train_y = read_dataset(train_dataset, train_dataset_args)
-        self.valid_sets, self.valid_xy, self.valid_x, self.valid_y = read_dataset(valid_dataset, valid_dataset_args)
+        self.train_sets, self.train_xy, self.train_x, self.train_y = read_dataset(train_dataset, train_dataset_args, self.multi_label)
+        self.valid_sets, self.valid_xy, self.valid_x, self.valid_y = read_dataset(valid_dataset, valid_dataset_args, self.multi_label)
 
     def init_data_reading_test(self, data_spec):
         dataset, dataset_args = read_data_args(data_spec)
-        self.test_sets, self.test_xy, self.test_x, self.test_y = read_dataset(dataset, dataset_args)
+        self.test_sets, self.test_xy, self.test_x, self.test_y = read_dataset(dataset, dataset_args, self.multi_label)
 
     # initialize the activation function
     def init_activation(self):

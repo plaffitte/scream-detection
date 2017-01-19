@@ -43,7 +43,6 @@ class PickleDataRead(object):
 
     def load_next_partition(self, shared_xy):
         pfile_path = self.pfile_path_list[self.cur_pfile_index]
-        print("pfile_path:", pfile_path)
         if self.feat_mat is None or len(self.pfile_path_list) > 1:
             fopen = smart_open(pfile_path, 'rb')
             test = cPickle.load(fopen)
@@ -60,9 +59,8 @@ class PickleDataRead(object):
                 shuffle_feature_and_label(self.feat_mat, self.label_vec)
 
             shared_x.set_value(self.feat_mat, borrow=True)
-            shared_y.set_value(self.label_vec.astype(theano.config.floatX), borrow=True)
+            shared_y.set_value(self.label_vec, borrow=True)
         self.cur_frame_num = len(self.feat_mat)
-        print("self.cur_frame_num is;", self.cur_frame_num)
         self.cur_pfile_index += 1
 
         if self.cur_pfile_index >= len(self.pfile_path_list):   # the end of one epoch
@@ -75,10 +73,13 @@ class PickleDataRead(object):
     def initialize_read(self, first_time_reading = False):
         self.end_reading = False
 
-    def make_shared(self):
+    def make_shared(self, multi_label):
         # define shared variables
         feat = numpy.zeros((10, 10), dtype=theano.config.floatX)
-        label = numpy.zeros((10,), dtype=theano.config.floatX)
+        if multi_label is True:
+            label = numpy.zeros((10, 10), dtype=theano.config.floatX)
+        else:
+            label = numpy.zeros((10,), dtype=theano.config.floatX)
 
         shared_x = theano.shared(feat, name='x', borrow=True)
         shared_y = theano.shared(label, name='y', borrow=True)

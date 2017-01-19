@@ -61,7 +61,10 @@ class DNN(object):
             self.x = T.matrix('x')
         else:
             self.x = input
-        self.y = T.ivector('y')
+        if cfg.multi_label is True:
+            self.y = T.imatrix('y')
+        else:
+            self.y = T.ivector('y')
 
         for i in xrange(self.hidden_layers_number):
             # construct the hidden layer
@@ -99,7 +102,7 @@ class DNN(object):
         # We now need to add a logistic layer on top of the MLP
         self.logLayer = LogisticRegression(
                          input=self.layers[-1].output,
-                         n_in=self.hidden_layers_sizes[-1], n_out=self.n_outs)
+                         n_in=self.hidden_layers_sizes[-1], n_out=self.n_outs, multi_label=cfg.multi_label)
 
         if self.n_outs > 0:
             self.layers.append(self.logLayer)
@@ -152,7 +155,7 @@ class DNN(object):
 
         train_fn = theano.function(inputs=[index, theano.Param(learning_rate, default = 0.0001),
               theano.Param(momentum, default = 0.5)],
-              outputs=[self.errors, self.logLayer.y_pred],
+              outputs=[self.errors, self.logLayer.y_pred, train_set_y[index * batch_size:(index + 1) * batch_size]],
               updates=updates,
               givens={
                 self.x: train_set_x[index * batch_size:
@@ -161,7 +164,7 @@ class DNN(object):
                                     (index + 1) * batch_size]})
 
         valid_fn = theano.function(inputs=[index],
-              outputs=[self.errors, self.logLayer.y_pred],
+              outputs=[self.errors, self.logLayer.y_pred, valid_set_y[index * batch_size:(index + 1) * batch_size]],
               givens={
                 self.x: valid_set_x[index * batch_size:
                                     (index + 1) * batch_size],
