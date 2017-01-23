@@ -16,7 +16,9 @@ device=cpu
 pythoncmd="nice -n19  /usr/bin/python -u"
 
 ######################## FEATURES PARAMS ##############################
-classes="{Noise,Conversation,Shouting}"
+# classes="{Noise,Conversation,Shouting}"
+classes_1="{NO_SPEECH,SPEECH,SHOUT}"
+classes_2="{PARKED,COMP_START,START_UP_SPEED,STOP_SPEED,CONTACTOR,COMP_BRAKE}"
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
 window_size=0.025 # in seconds, size of MFCC window
@@ -28,13 +30,19 @@ slide='5'
 threshold=10000
 compute_deltas="False"
 cnn_arch="1x10x40:150,8x10,p2x2:100,1x8,1x2,f"
-coucheDNN="256:3"
+coucheDNN="512:3"
 layerNumberDNN='3'
-lambda="C:0.08:2" #"D:0.1:0.8:0.2,0.05" #
-multi_label="False"
+lambda="D:0.1:0.8:0.2,0.05:50" #"D:0.1:0.8:0.2,0.05" #
+multi_label=true
 
 ###################################################################
-rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+if $multi_label; then
+  rep_classes=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+  rep_classes+="x"
+  rep_classes+=`echo $classes_2 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+else
+  rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+fi
 wst=$(echo "$window_step * 1000" |bc -l)
 wsi=$(echo "$window_size * 1000" |bc -l)
 window_steptxt=${wst/.000/m}
