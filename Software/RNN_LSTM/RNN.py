@@ -184,7 +184,7 @@ class RNN(object):
         # Create functions to be called from outside
         self.train = theano.function(
                          inputs = [input, mask, label, lrate],
-                         outputs = [cost, y, gradient[5], h, t, h.dot(self.Wout), self.Wout],
+                         outputs = [cost, y],
                          updates = updates,
                      )
 

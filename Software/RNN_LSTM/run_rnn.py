@@ -2,7 +2,7 @@ from RNN import RNN
 import numpy as np
 import sys, os, gzip
 import cPickle
-from util_func import parse_arguments, log, parse_classes
+from util_func import parse_arguments, log, parse_classes, format_results
 from liblatex import *
 
 # ############################### Read Data ###############################
@@ -39,12 +39,14 @@ if initParams == 'None':
     initParams = None
 filesave = arguments['filesave']
 fileTex = arguments['fileTex']
-classes= arguments['classes']
+classes_1 = parse_classes(arguments['classes_1'])
+classes_2 = parse_classes(arguments['classes_2'])
 n_epoch = int(arguments['epoch'])
 lrate = np.float32(arguments['lambda'])
 train_data_spec = arguments['train_data']
 valid_data_spec = arguments['valid_data']
 test_data_spec = arguments['test_data']
+multi_label = arguments['multi_label']
 input, label, mask = read(train_data_spec)
 test, label_test, mask_test = read(test_data_spec)
 valid, label_valid, mask_valid = read(valid_data_spec)
@@ -82,42 +84,50 @@ for k in range(n_epoch):
     confusion_matrix_valid = np.zeros((n_classes, n_classes))
     n_data = 0
     for i in range(n_batches):
-        cost, output, gradient, hidden_act, t, x_1, wout = rnn.train(input[i], mask[i], label[i], lrate)
+        cost, output = rnn.train(input[i], mask[i], label[i], lrate)
         rnn.save(filesave)
         train_cost.append(cost)
         prob = rnn.predict(input[i], mask[i])
-        for jj in range(prob.shape[1]):
-            for kk in range(prob.shape[0]):
-                prediction = (-prob[kk, jj, :]).argsort()
-                label_sorted = (-label[i][kk, jj, :]).argsort()
-                if any(label[i][kk, jj, :]):
-                    n_data += 1
-                    if prediction[0] == label_sorted[0]:
-                        correct_number_train += 1
-                    confusion_matrix_train[prediction[0], label_sorted[0]] += 1
-                    class_occurrence_train[label_sorted[0]] += 1
-    log('> epoch ' + str(k) + ', training cost: ' + str(100 * np.mean(train_cost)))
-    confusion_matrix_train = 100 * confusion_matrix_train / class_occurrence_train
-    train_error_rate = 100 * (1.0 - correct_number_train / n_data)
-    log('Error rate on training set is ' + str(train_error_rate) + ' (%)')
-    log('Confusion Matrix on training set is \n\n ' + str(np.around(confusion_matrix_train, 2)) + ' (%)\n')
+        if not multi_label:
+            for jj in range(prob.shape[1]):
+                for kk in range(prob.shape[0]):
+                    prediction = (-prob[kk, jj, :]).argsort()
+                    label_sorted = (-label[i][kk, jj, :]).argsort()
+                    if any(label[i][kk, jj, :]):
+                        n_data += 1
+                        if prediction[0] == label_sorted[0]:
+                            correct_number_train += 1
+                        confusion_matrix_train[prediction[0], label_sorted[0]] += 1
+                        class_occurrence_train[label_sorted[0]] += 1
+    if multi_label:
+        train_error_rate = format_results(prob, label[i], multi_label, n_classes)
+    else:
+        log('> epoch ' + str(k) + ', training cost: ' + str(100 * np.mean(train_cost)))
+        confusion_matrix_train = 100 * confusion_matrix_train / class_occurrence_train
+        train_error_rate = 100 * (1.0 - correct_number_train / n_data)
+        log('Error rate on training set is ' + str(train_error_rate) + ' (%)')
+        log('Confusion Matrix on training set is \n\n ' + str(np.around(confusion_matrix_train, 2)) + ' (%)\n')
     n_data = 0
     for i in range(n_valid):
         prob = rnn.predict(valid[i], mask_valid[i])
-        for jj in range(prob.shape[1]):
-            for kk in range(prob.shape[0]):
-                prediction = (-prob[kk, jj, :]).argsort()
-                label_sorted = (-label_valid[i][kk, jj, :]).argsort()
-                if any(label_valid[i][kk, jj, :]):
-                    n_data += 1
-                    if prediction[0] == label_sorted[0]:
-                        correct_number_valid += 1
-                    confusion_matrix_valid[prediction[0], label_sorted[0]] += 1
-                    class_occurrence_valid[label_sorted[0]] += 1
-    confusion_matrix_valid = 100 * confusion_matrix_valid / class_occurrence_valid
-    valid_error_rate = 100 * (1.0 - correct_number_valid / n_data)
-    log('Error rate is on validation set is ' + str(valid_error_rate) + ' (%)')
-    log('Confusion Matrix on validation set is \n\n ' + str(np.around(confusion_matrix_valid, 2)) + ' (%)\n')
+        if not multi_label:
+            for jj in range(prob.shape[1]):
+                for kk in range(prob.shape[0]):
+                    prediction = (-prob[kk, jj, :]).argsort()
+                    label_sorted = (-label_valid[i][kk, jj, :]).argsort()
+                    if any(label_valid[i][kk, jj, :]):
+                        n_data += 1
+                        if prediction[0] == label_sorted[0]:
+                            correct_number_valid += 1
+                        confusion_matrix_valid[prediction[0], label_sorted[0]] += 1
+                        class_occurrence_valid[label_sorted[0]] += 1
+    if multi_label:
+        valid_error_rate = format_results(prob, label[i], multi_label, n_classes)
+    else:
+        confusion_matrix_valid = 100 * confusion_matrix_valid / class_occurrence_valid
+        valid_error_rate = 100 * (1.0 - correct_number_valid / n_data)
+        log('Error rate is on validation set is ' + str(valid_error_rate) + ' (%)')
+        log('Confusion Matrix on validation set is \n\n ' + str(np.around(confusion_matrix_valid, 2)) + ' (%)\n')
     if k != 0:
         if train_error_rate > (old_training_error + delta_train):
             print('--->>> Network is diverging!')
@@ -131,8 +141,8 @@ for k in range(n_epoch):
             break
 
 ### IMPLEMENT STOPPING CRITERION ########
-    old_training_error = train_error_rate
-    old_valid_error = valid_error_rate
+    # old_training_error = train_error_rate
+    # old_valid_error = valid_error_rate
 # cPickle.dump(result, gzip.open(file, 'wb'))
 
 ########################## TEST ON THE TEST DATA ###########################
@@ -163,7 +173,7 @@ log('Error rate is ' + str(error_rate) + ' (%)')
 log('Confusion Matrix is \n\n ' + str(confusion_matrix) + ' (%)\n')
 rnn.save(filesave)
 N = len(confusion_matrix) # number of classes =pred_mat.shape[1] ?
-class_list = parse_classes(classes)
+class_list = parse_classes(classes_1, classes_2)
 Docpath = fileTex
 TabPath = fileTex
 Docname = "Confusion_matrix"
