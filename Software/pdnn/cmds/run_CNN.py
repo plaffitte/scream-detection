@@ -30,7 +30,6 @@ if __name__ == '__main__':
     # check the arguments
     arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
     arguments = parse_arguments(arg_elements)
-    print("Arguments are:", arguments)
     required_arguments = ['train_data', 'valid_data', 'nnet_spec', 'conv_nnet_spec', 'wdir']
     for arg in required_arguments:
         if arguments.has_key(arg) == False:
