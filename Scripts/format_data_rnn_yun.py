@@ -21,7 +21,6 @@ name_var = arguments['data_type']
 target_path = arguments['rep_test']
 param_str = arguments['param']
 classes = parse_classes(arguments['classes'])
-N_classes = len(classes)
 param_list = parse_classes(param_str)
 window_step=float(param_list[0] )# in seconds, hop size between two successive mfcc windows
 window_size=float(param_list[1] )# in seconds, size of MFCC window
@@ -137,7 +136,6 @@ for i in xrange(len(file_list)):
                 stream_full = False
                 data_vector = np.zeros((1, size)).astype(np.float32)
                 label_vector = np.zeros((1, N_classes)).astype(np.int32)
-                # label_vector = np.zeros(1).astype(np.int32)
                 mask_vector = np.zeros(1).astype(np.int32)
                 while stream_full != True:
                     try:
@@ -150,19 +148,15 @@ for i in xrange(len(file_list)):
                             length = stop - start
                         else:
                             length = (stop - start) / 10.0 ** 7
-                        #raw_input("Press Enter to continue...")
                         if re_use:
                             pass
-                            # print('filling up with rest of previous data')
                         else:
-                            # print('reading new data')
                             audio = f.read_frames(np.floor(freq * length))
                             time_per_occurrence_class[label_dic[label]].append(length)
                         if label in label_dic:
                             signal = audio  # audio/math.sqrt(energy)
                             n_occurrence = np.sum(time_per_occurrence_class[label_dic[label]])
                             if n_occurrence < occurrence_threshold:
-                                # print('-->extracting features')
                                 data, labels = create_data(signal, label)
                                 if plot_detail:
                                     im, ax = plt.subplots()
@@ -181,7 +175,6 @@ for i in xrange(len(file_list)):
                                             restart = False
                                         data = data[ind_start: ind_end, :]
                                         labels = labels[ind_start:ind_end, :]
-                                        # labels = labels[ind_start:ind_end]
                                         remaining_data = min(max_batch_len , length - ind_end)
                                         if remaining_data > 2:
                                             restart = False
@@ -215,7 +208,6 @@ for i in xrange(len(file_list)):
                                         re_use = True
                                     else:
                                         # Data fits in current stream
-                                        # print('>data fits current stream')
                                         if len(labels) < max_seq_length:
                                             # Data shorter than max sequence length
                                             label_vector = np.concatenate((label_vector, labels.astype(np.float32)))
@@ -226,7 +218,6 @@ for i in xrange(len(file_list)):
                                             mask_vector = np.concatenate((mask_vector, interm.astype(np.int32)))
                                         # if data bigger than max_sequence_len, chop up in chuncks of lentgh max_sequence_len
                                         else:
-                                            # print('current data exceeds max sequence length, chopping')
                                             new_index = 0
                                             num_it = int(np.floor(len(labels) / max_seq_length))
                                             for j in range(num_it):
@@ -243,7 +234,6 @@ for i in xrange(len(file_list)):
                                                 else:
                                                     pass
                                         re_use = False
-                                # print('-->length of data_vector at the end of the loop:', data_vector.shape)
                         else:
                             print('label not in label dic')
                         line_index += 1
@@ -263,11 +253,6 @@ for i in xrange(len(file_list)):
                         raise
                 if end_file and len(data_vector) < max_batch_len + 1:
                     zero_pad()
-                if plot:
-                    print('This is data_vector at the end')
-                    plt.imshow(data_vector[1:, :].T, aspect='auto')
-                    plt.plot(label_vector[1:, 2])
-                    plt.show()
                 data_tensor[kk, :, :] = data_vector[1:, :]
                 label_tensor[kk, :, :] = label_vector[1:, :]
                 # label_tensor[kk, :] = label_vector[1:]
@@ -289,13 +274,20 @@ target_name = os.path.join(target_path, name_var + '.pickle.gz')
 #print('writing pickle file:', np.shape(obj))
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
 
+string = '\n======= data description:\n'
+log.write(string)
 for class_name, class_value in label_dic.items():
-    string = 'Name of corresponding wav file:'+wave_name+'\n'
-    string += 'number of data from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
-    string += 'length of smallest data from class:' + class_name + ':' + str(min(time_per_occurrence_class[class_value]))+'\n'
-    string += 'length of longest data from class:' + class_name + ':' + str(max(time_per_occurrence_class[class_value]))+'\n'
-    string += 'mean length of data from class:' + class_name + ':' + str(np.mean(time_per_occurrence_class[class_value]))+'\n'
-    string += 'total length of data from class:' + class_name + ':' + str(np.sum(time_per_occurrence_class[class_value]))+'\n'
-    print(string)
-    log.write(string)
+    try:
+        string = 'number of data from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
+        log.write(string)
+        string = 'length of smallest data from class:' + class_name + ':' + str(min(time_per_occurrence_class[class_value]))+'\n'
+        log.write(string)
+        string = 'length of longest data from class:' + class_name + ':' + str(max(time_per_occurrence_class[class_value]))+'\n'
+        log.write(string)
+        string = 'mean length of data from class:' + class_name + ':' + str(np.mean(time_per_occurrence_class[class_value]))+'\n'
+        log.write(string)
+        string = 'total length of data from class:' + class_name + ':' + str(np.sum(time_per_occurrence_class[class_value]))+'\n'
+        log.write(string)
+    except:
+        continue
 log.close()

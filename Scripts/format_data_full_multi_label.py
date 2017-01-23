@@ -8,23 +8,31 @@ import math, shutil
 from spectral import get_mfcc
 from util_func import parse_arguments, parse_classes
 
+typeFeature = "MFCC"
+name_cur_file = os.path.basename(__file__)
+name_cur_dir = os.path.dirname(os.path.abspath(__file__))
+source_dir = os.getcwd()
+
+##### Parse Arguments #####
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = parse_arguments(arg_elements)
 name_var = arguments['data_type']
+target_path = arguments['rep_test']
+param_str = arguments['param']
 classes_1 = parse_classes(arguments['classes_1'])
 classes_2 = parse_classes(arguments['classes_2'])
-window_step = float(arguments['window_step'])
-window_size = float(arguments['window_size'])
-highfreq = int(arguments['highfreq'])
-lowfreq = int(arguments['lowfreq'])
-size = int(arguments['size'])
-N = int(arguments['N'])
-slide = int(arguments['slide'])
-exp_path = arguments['exp_path']
-threshold = int(arguments['threshold'])
-compute_delta = arguments['deltas']
-shutil.copyfile('/home/piero/Documents/Scripts/format_data_full_multi_label.py',
-                os.path.join(exp_path,'format_data_full_multi_label.py'))
+param_list = parse_classes(param_str)
+window_step=float(param_list[0] )# in seconds, hop size between two successive mfcc windows
+window_size=float(param_list[1] )# in seconds, size of MFCC window
+highfreq=float(param_list[2]) # maximal analysis frequency for mfcc
+lowfreq=float(param_list[3]) # minimal analysis frequency for mfcc
+size=int(param_list[4]) # number of mfcc coef
+N=int(param_list[5]) #contextual window
+slide=int(param_list[6])
+threshold = int(param_list[7])
+compute_delta = param_list[8]
+
+##### Initialize label dic #####
 N_classes_1 = len(classes_1)
 N_classes_2 = len(classes_2)
 label_dic = {}
@@ -32,19 +40,40 @@ for k in range(N_classes_1):
     label_dic[classes_1[k]] = k
 for k in range(N_classes_2):
     label_dic[classes_2[k]] = k + N_classes_1
-time_per_occurrence_class = [[] for i in range(N_classes_1 * N_classes_2)]
-initial_path = '/home/piero/Documents/test_folder/'+name_var+'_labels' # label files
-target_path = os.path.join(exp_path,'data')
-os.chdir(initial_path)
-cur_dir = os.getcwd()
-file_list = os.listdir(cur_dir)
-wav_dir = os.path.join(os.path.split(initial_path)[0], 'wav')
-label_vector = np.zeros((1, N_classes_1 + N_classes_2))
+
+##### Copy label files and current script where necessary to trace experiment #####
+shutil.copyfile(os.path.join(name_cur_dir, name_cur_file), os.path.join(target_path, name_cur_file))
+label_path = source_dir + '/Data_Base/' + name_var + '_labels' + '/multi_env' # Path to label files
+shutil.rmtree(os.path.join(target_path, name_var+'_labels'), ignore_errors=True)
+shutil.copytree(label_path, os.path.join(target_path, name_var+'_labels'))
+
+##### Memory allocation #####
+label_vector = np.zeros((1, N_classes_1 + N_classes_2), dtype=np.float32)
 if compute_delta == "True":
     size = 2 * size
 data_vector = np.zeros((1, size * N), dtype=np.float32)
+time_per_occurrence_class = [[] for i in range(N_classes_1 + N_classes_2)]
+
+##### Couple log writings #####
 logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
 log = open(logfile, 'w')
+string = '===== Parametre Features:\n'; log.write(string)
+string = ' typeFeature : ' + typeFeature + '\n'; log.write(string)
+string = ' window_step : ' + param_list[0] + '\n'; log.write(string)
+string = ' window_size : ' + param_list[1] + '\n'; log.write(string)
+string = ' highfreq : ' + param_list[2] + '\n'; log.write(string)
+string = ' lowfreq : ' + param_list[3] + '\n'; log.write(string)
+string = ' size : ' + param_list[4] + '\n'; log.write(string)
+string = ' N contextual window : ' + param_list[5] + '\n'; log.write(string)
+string = ' Slide : ' + param_list[6] + '\n\n'; log.write(string)
+string = '===== Name of corresponding wav file:\n'; log.write(string)
+
+##### Set a few variables used in the loop #####
+file_list = os.listdir(label_path)
+file_list = [file for file in file_list if os.path.isfile(os.path.join(label_path, file))]
+wav_dir = os.path.join(os.path.split(os.path.split(label_path)[0])[0], 'wav')
+buffer_vec = []
+ind_buffer = 0
 time_1 = 0
 time_2 = 0
 start = 0.0
@@ -56,12 +85,10 @@ def create_data(sig, label_1, label_2):
     mfcc = get_mfcc(sig, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
                     highfreq=highfreq, numcep=size, nfilt=size+2)
     # One-hot encoding
-    num_label = np.zeros((len(mfcc), N_classes_1 + N_classes_2))
-    num_label[:, label_dic[label_1]] = 1
-    num_label[:, label_dic[label_2]] = 1
-    # Direct encoding
-    # num_label = label_dic[label] * np.ones(len(mfcc))
-    return mfcc, num_label
+    # num_label = np.zeros((len(mfcc), N_classes_1 + N_classes_2))
+    # num_label[:, label_dic[label_1]] = 1
+    # num_label[:, label_dic[label_2]] = 1
+    return mfcc
 
 ### Find all lab files from similar audio file
 multi_lab = {}
@@ -89,23 +116,21 @@ for i,j in multi_lab.iteritems():
         wave_name = os.path.join(wav_dir, lab_name_1[:-4]+'.wav')
     wave = audlab.Sndfile(wave_name, 'r')
     freq = wave.samplerate
-    with open(os.path.join(cur_dir, lab_name_1), 'r') as f1:
-        with open(os.path.join(cur_dir, lab_name_2), 'r') as f2:
+    with open(os.path.join(label_path, lab_name_1), 'r') as f1:
+        with open(os.path.join(label_path, lab_name_2), 'r') as f2:
             lines_1 = f1.readlines()
             lines_2 = f2.readlines()
             while not end_file :
                 try:
                     ### Check if next label needs to be retrieved for each label file
-                    if mv_1:
-                        cur_line_1 = lines_1[index_1].split()
-                        start_1 = float(cur_line_1[0])
-                        stop_1 = float(cur_line_1[1])
-                        label_1 = cur_line_1[2]
-                    if mv_2:
-                        cur_line_2 = lines_2[index_2].split()
-                        start_2 = float(cur_line_2[0])
-                        stop_2 = float(cur_line_2[1])
-                        label_2 = cur_line_2[2]
+                    cur_line_1 = lines_1[index_1].split()
+                    start_1 = float(cur_line_1[0])
+                    stop_1 = float(cur_line_1[1])
+                    label_1 = cur_line_1[2]
+                    cur_line_2 = lines_2[index_2].split()
+                    start_2 = float(cur_line_2[0])
+                    stop_2 = float(cur_line_2[1])
+                    label_2 = cur_line_2[2]
                     ### Find out which of the two labels has the shortest length and read audio for that length
                     if np.max((start_1, start_2)) == start_1:
                         start = start_1
@@ -131,7 +156,7 @@ for i,j in multi_lab.iteritems():
                     if (label_1 in label_dic) and (label_2 in label_dic):
                         if time_1 < threshold  and time_2 < threshold:
                             signal = audio  # audio/math.sqrt(energy)
-                            data, labels = create_data(signal, label_1, label_2)
+                            data = create_data(signal, label_1, label_2)
                             if compute_delta == "True":
                                 d1_mfcc = np.zeros((data.shape[0]-1,data.shape[1]))
                                 for k in range(data.shape[0]-1):
@@ -148,6 +173,9 @@ for i,j in multi_lab.iteritems():
                                         if compute_delta == "True":
                                             mfcc_vec = np.concatenate((mfcc_vec, d1_mfcc[k * slide + kk, :]))
                                     mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
+                                labels = np.zeros((len(mfcc_matrix) - 1, N_classes_1 + N_classes_2))
+                                labels[:, label_dic[label_1]] = 1
+                                labels[:, label_dic[label_2]] = 1
                                 label_vector = np.concatenate((label_vector, labels.astype(np.float32)))
                                 data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
                                 time_per_occurrence_class[label_dic[label_1]].append(length)
@@ -162,19 +190,6 @@ for i,j in multi_lab.iteritems():
                         end_file = True
                 except KeyError, e:
                     print "Wrong label name:", label, "at line", j+1
-                except RuntimeError, e:
-                    print "sync error between wave and label files"
-                    print("start:", start)
-                    print("stop:", stop)
-                    print("index 1:", index_1)
-                    print("index 2:", index_2)
-                    raise
-                except ValueError, e:
-                    print("start:", start)
-                    print("stop:", stop)
-                    print("index 1:", index_1)
-                    print("index 2:", index_2)
-                    raise
                 except:
                     print "Unexpected error:", sys.exc_info()[0]
                     print("start:", start)
@@ -185,7 +200,6 @@ for i,j in multi_lab.iteritems():
     print("Size of data_vector: ", data_vector.shape)
 data_vector = data_vector[1:,:]
 label_vector = label_vector[1:]
-
 total_L_sec = stop / (10.0 ** 7)
 total_N = total_L_sec/window_step
 obj = [data_vector, label_vector]
@@ -194,8 +208,6 @@ target_name = os.path.join(target_path,name_var+'.pickle.gz')
 cPickle.dump(obj, gzip.open(target_name,'wb'),cPickle.HIGHEST_PROTOCOL)
 
 for class_name, class_value in label_dic.items():
-    string = 'Name of corresponding wav file:'+wave_name+'\n'
-    log.write(string)
     string = 'number of data from class' + str(class_name) + ':' + \
                     str(len(time_per_occurrence_class[label_dic.values().index(class_value)]))+'\n'
     log.write(string)

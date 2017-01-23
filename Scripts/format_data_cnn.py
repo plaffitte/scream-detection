@@ -6,7 +6,7 @@ import math, shutil
 from spectral import MFSC
 from util_func import parse_arguments, parse_classes
 
-typeFeature = "MFCC"
+typeFeature = "MFSC"
 name_cur_file = os.path.basename(__file__)
 name_cur_dir = os.path.dirname(os.path.abspath(__file__))
 source_dir = os.getcwd()

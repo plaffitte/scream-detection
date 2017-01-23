@@ -127,7 +127,9 @@ for i in range(len(file_list)):
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
-                print "Unexpected error:", sys.exc_info()[0]
+                print "-> Unexpected error:", sys.exc_info()[0]
+                print "-> Label file: ", lab_name
+                print "-> Line: ", j
                 raise
     print("Size of data_vector: ", data_vector.shape)
 
