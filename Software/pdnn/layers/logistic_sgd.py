@@ -78,7 +78,6 @@ class LogisticRegression(object):
         # check if y has same dimension of y_pred
         if y.ndim != self.y_pred.ndim:
             raise TypeError('y should have the same shape as self.y_pred')
-                ('y', target.type, 'y_pred', self.y_pred.type))
             # y = T.argmax(y)
         if self.multi_label is True:
             return T.mean(T.neq(self.y_pred, y))
