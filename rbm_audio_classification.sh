@@ -18,9 +18,6 @@ export THEANO_FLAGS=mode=FAST_RUN,device=$device,floatX=float32,openmp='True'
 ############################### SET PARAMS #############################
 # For regular single environment classification
 classes="{Noise,Conversation,Shouting}"
-# For multi environment classification
-# classes_1="{NO_SPEECH,SPEECH,SHOUT}"
-# classes_2="{PARKED,COMP_START,START_UP_SPEED,STOP_SPEED,CONTACTOR,COMP_BRAKE}"
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
 window_size=0.025 # in seconds, size of MFCC window
@@ -33,10 +30,10 @@ threshold=10000
 compute_deltas="False"
 ptr=0 # set to 1 if you want pre-training
 coucheRBM=""
-coucheDNN="400:256:3"
+coucheDNN="400:128:3"
 layerNumberRBM='0'
 layerNumberDNN='1'
-epoch_numberRBM=0
+epoch_numberRBM=10
 lambda="C:0.1:1" # "D:0.1:0.8:0.2,0.05:10"
 multi_label=false
 ## source $1

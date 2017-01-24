@@ -38,9 +38,9 @@ for i in range(len(classes)):
 
 ##### Copy label files and current script where necessary to trace experiment #####
 shutil.copyfile(os.path.join(name_cur_dir, name_cur_file), os.path.join(target_path, name_cur_file))
-label_path = source_dir + '/Data_Base/' + name_var + '_labels' # Path to label files
-shutil.rmtree(os.path.join(target_path, name_var+'_labels'), ignore_errors=True)
-shutil.copytree(label_path, os.path.join(target_path, name_var+'_labels'))
+label_path = source_dir + '/Data_Base/labels' # Path to label files
+shutil.rmtree(os.path.join(target_path, '_labels'), ignore_errors=True)
+shutil.copytree(label_path, os.path.join(target_path, '_labels'))
 
 ##### Memory allocation #####
 label_vector = np.zeros(1, dtype=np.float32)
@@ -50,7 +50,7 @@ data_vector = np.zeros((1, size * N), dtype=np.float32)
 time_per_occurrence_class = [[] for i in range(N_classes)]
 
 ##### Couple log writings #####
-logfile = os.path.join(target_path, 'data_log_'+name_var+'.log')
+logfile = os.path.join(target_path, 'data_log_' + '.log')
 log = open(logfile, 'w')
 string = '===== Parametre Features:\n'; log.write(string)
 string = ' typeFeature : ' + typeFeature + '\n'; log.write(string)
@@ -74,6 +74,13 @@ for i in range(len(file_list)):
         continue
     with open(os.path.join(label_path, file_list[i]), 'r') as lab_f:
         lines = lab_f.readlines()
+        wave_len = lines[len(lines) - 1]
+        if name_var=="train":
+            count_min = 0
+            count_max = 2 * float(wave_len.split()[1]) / 3
+        else:
+            count_min = 2* float(wave_len.split()[1]) / 3
+            count_max = wave_len
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
@@ -92,9 +99,9 @@ for i in range(len(file_list)):
                     length = stop - start
                 else:
                     length = (stop - start) / 10.0 ** 7
-                audio = f.read_frames(freq*(length))
-                if label in label_dic:
+                if (label in label_dic) & (start > count_min) & (stop <= count_max):
                     if time < threshold:
+                        audio = f.read_frames(freq*(length))
                         # energy = np.sum(audio ** 2, 0) / len(audio)
                         signal = audio  # audio/math.sqrt(energy)
                         mfcc = get_mfcc(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
@@ -122,8 +129,6 @@ for i in range(len(file_list)):
                             data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
                         else:
                             print('Input data sequence does not match minimal length requirement: ignoring')
-                else:
-                    del audio
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
