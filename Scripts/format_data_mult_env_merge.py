@@ -17,7 +17,6 @@ source_dir = os.getcwd()
 ##### Parse Arguments #####
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = parse_arguments(arg_elements)
-print arguments
 network_type = arguments['net']
 name_var = arguments['data_type']
 target_path = arguments['rep_test']

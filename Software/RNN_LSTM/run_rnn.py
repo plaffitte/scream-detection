@@ -39,14 +39,18 @@ if initParams == 'None':
     initParams = None
 filesave = arguments['filesave']
 fileTex = arguments['fileTex']
-classes_1 = parse_classes(arguments['classes_1'])
-classes_2 = parse_classes(arguments['classes_2'])
 n_epoch = int(arguments['epoch'])
 lrate = np.float32(arguments['lambda'])
 train_data_spec = arguments['train_data']
 valid_data_spec = arguments['valid_data']
 test_data_spec = arguments['test_data']
 multi_label = arguments['multi_label']
+multi_env = arguments['multi_env']
+if multi_label=="true" or multi_env=="true":
+    classes_1 = parse_classes(arguments['classes_1'])
+    classes_2 = parse_classes(arguments['classes_2'])
+else:
+    classes = parse_classes(arguments['classes'])
 input, label, mask = read(train_data_spec)
 test, label_test, mask_test = read(test_data_spec)
 valid, label_valid, mask_valid = read(valid_data_spec)
@@ -88,7 +92,7 @@ for k in range(n_epoch):
         rnn.save(filesave)
         train_cost.append(cost)
         prob = rnn.predict(input[i], mask[i])
-        if not multi_label:
+        if multi_label=="false":
             for jj in range(prob.shape[1]):
                 for kk in range(prob.shape[0]):
                     prediction = (-prob[kk, jj, :]).argsort()
@@ -99,7 +103,7 @@ for k in range(n_epoch):
                             correct_number_train += 1
                         confusion_matrix_train[prediction[0], label_sorted[0]] += 1
                         class_occurrence_train[label_sorted[0]] += 1
-    if multi_label:
+    if multi_label=="true":
         train_error_rate = format_results(prob, label[i], multi_label, n_classes)
     else:
         log('> epoch ' + str(k) + ', training cost: ' + str(100 * np.mean(train_cost)))
@@ -110,7 +114,7 @@ for k in range(n_epoch):
     n_data = 0
     for i in range(n_valid):
         prob = rnn.predict(valid[i], mask_valid[i])
-        if not multi_label:
+        if multi_label=="false":
             for jj in range(prob.shape[1]):
                 for kk in range(prob.shape[0]):
                     prediction = (-prob[kk, jj, :]).argsort()
@@ -121,7 +125,7 @@ for k in range(n_epoch):
                             correct_number_valid += 1
                         confusion_matrix_valid[prediction[0], label_sorted[0]] += 1
                         class_occurrence_valid[label_sorted[0]] += 1
-    if multi_label:
+    if multi_label=="true":
         valid_error_rate = format_results(prob, label[i], multi_label, n_classes)
     else:
         confusion_matrix_valid = 100 * confusion_matrix_valid / class_occurrence_valid

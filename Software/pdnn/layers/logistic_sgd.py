@@ -49,7 +49,8 @@ class LogisticRegression(object):
         self.delta_W = theano.shared(value = numpy.zeros_like(self.W.get_value(borrow=True)), name = 'delta_W')
         self.delta_b = theano.shared(value = numpy.zeros_like(self.b.get_value(borrow=True)), name = 'delta_b')
         # compute vector of class-membership probabilities in symbolic form
-        if multi_label:
+
+        if self.multi_label:
             self.p_y_given_x = T.nnet.sigmoid(T.dot(input, self.W) + self.b)
         else:
             self.p_y_given_x = T.nnet.softmax(T.dot(input, self.W) + self.b)
@@ -77,7 +78,7 @@ class LogisticRegression(object):
         # check if y has same dimension of y_pred
         if y.ndim != self.y_pred.ndim:
             raise TypeError('y should have the same shape as self.y_pred')
-            #     ('y', target.type, 'y_pred', self.y_pred.type))
+                ('y', target.type, 'y_pred', self.y_pred.type))
             # y = T.argmax(y)
         if self.multi_label is True:
             return T.mean(T.neq(self.y_pred, y))

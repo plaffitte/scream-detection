@@ -5,10 +5,9 @@ import scikits.audiolab as audlab
 import cPickle, gzip, sys
 import numpy as np
 import math, shutil
-from spectral import get_mfcc
+from spectral import get_mfcc, MFSC
 from util_func import parse_arguments, parse_classes
 
-typeFeature = "MFCC"
 name_cur_file = os.path.basename(__file__)
 name_cur_dir = os.path.dirname(os.path.abspath(__file__))
 source_dir = os.getcwd()
@@ -16,6 +15,7 @@ source_dir = os.getcwd()
 ##### Parse Arguments #####
 arg_elements = [sys.argv[i] for i in range(1, len(sys.argv))]
 arguments = parse_arguments(arg_elements)
+network_type = arguments['net']
 name_var = arguments['data_type']
 target_path = arguments['rep_test']
 param_str = arguments['param']
@@ -31,6 +31,10 @@ N=int(param_list[5]) #contextual window
 slide=int(param_list[6])
 threshold = int(param_list[7])
 compute_delta = param_list[8]
+if network_type=="DNN":
+    typeFeature = "MFCC"
+elif network_type=="CNN":
+    typeFeature = "MFSC"
 
 ##### Initialize label dic #####
 N_classes_1 = len(classes_1)
@@ -81,13 +85,13 @@ stop = 0.0
 end_file = False
 
 ########## Callback processing function ##########
-def create_data(sig, label_1, label_2):
-    mfcc = get_mfcc(sig, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
-                    highfreq=highfreq, numcep=size, nfilt=size+2)
-    # One-hot encoding
-    # num_label = np.zeros((len(mfcc), N_classes_1 + N_classes_2))
-    # num_label[:, label_dic[label_1]] = 1
-    # num_label[:, label_dic[label_2]] = 1
+def create_data(sig, network_type):
+    if network_type=="DNN":
+        mfcc = get_mfcc(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
+                    highfreq=highfreq, numcep=size, nfilt=size + 2)
+    elif network_type=="CNN":
+        mfcc, energy = MFSC(signal, freq, winstep=window_step, nfft=2048,
+                    lowfreq=100, highfreq=highfreq, nfilt=size)
     return mfcc
 
 ### Find all lab files from similar audio file
@@ -156,7 +160,7 @@ for i,j in multi_lab.iteritems():
                     if (label_1 in label_dic) and (label_2 in label_dic):
                         if time_1 < threshold  and time_2 < threshold:
                             signal = audio  # audio/math.sqrt(energy)
-                            data = create_data(signal, label_1, label_2)
+                            data = create_data(signal, network_type)
                             if compute_delta == "True":
                                 d1_mfcc = np.zeros((data.shape[0]-1,data.shape[1]))
                                 for k in range(data.shape[0]-1):

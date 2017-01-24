@@ -64,7 +64,10 @@ class CNN(object):
             self.x = T.matrix('x')
         else:
             self.x = input
-        self.y = T.ivector('y')
+        if cfg.multi_label is True:
+            self.y = T.imatrix('y')
+        else:
+            self.y = T.ivector('y')
 
         self.conv_layer_num = len(self.conv_layer_configs)
         for i in xrange(self.conv_layer_num):

@@ -15,7 +15,8 @@ export PYTHONPATH=$PYTHONPATH:$curdir/interface_latex
 device=cpu
 
 ######################## FEATURES PARAMS ##############################
-classes="{NO_SPEECH,SPEECH,SHOUT}"
+classes_1="{NO_SPEECH,SPEECH,SHOUT}"
+classes_2="{START_UP_SPEED,REDUCTION_SPEED,FULL_SPEED,SLOW_SPEED,STOP_SPEED}"
 typeparam="MFCC"
 window_step=0.010 # in seconds, hop size between two successive mfcc windows
 window_size=0.025 # in seconds, size of MFCC window
@@ -33,16 +34,16 @@ n_stream=10
 max_batch_len=500 #500
 compute_deltas=False
 multi_label=false
-multi_env=false
+multi_env=true
 
 # ################### NETWORK PARAMS ###########################
 Nlayers=1                 # number of layers
 Ndirs=1                     # unidirectional or bidirectional
 Nh=128                    # hidden layer size
-Ah="lstm"                 # hidden unit activation (e.g. relu, tanh, lstm)
+Ah="tanh"                 # hidden unit activation (e.g. relu, tanh, lstm)
 Ay="softmax"            # output unit activation (e.g. linear, sigmoid, softmax)
 predictPer="frame"   # frame or sequence
-loss="ce_group"         # loss function (e.g. mse, ce, ce_group, hinge, squared_hinge)
+loss="ce"         # loss function (e.g. mse, ce, ce_group, hinge, squared_hinge)
 L1reg=0.001                # L1 regularization
 L2reg=0.001                # L2 regularization
 momentum=0.0         # SGD momentum
@@ -52,55 +53,61 @@ initParams="None"       # initialize from given dic
 n_epoch=100
 lrate=0.05
 
-if $multi_label; then
-  rep_classes=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
+###################################################################
+if $multi_label || $multi_env; then
+  if $multi_env; then rep_classes="multi_env_"
+  fi
+  if $multi_label; then rep_classes="multi_lab_"
+  fi
+  rep_classes+=`echo $classes_1 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
   rep_classes+="x"
   rep_classes+=`echo $classes_2 | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
 else
   rep_classes=`echo $classes | sed -e 's/,/_/g' -e 's/.//;s/.$//'`
 fi
 couchetxt=$Nlayers"_layer_"$Ah"_"$Ay"_"$loss"_"$perdictPer"_"$Nh"_"$Nc
-param_test="{$window_step,$window_size,$highfreq,$lowfreq,$size,$max_seq_len,$n_stream,$max_batch_len,$threshold,$compute_deltas}"param_txt=$typeparam'_'$window_steptxt'_'$window_sizetxt'_'$highfreq'_'$lowfreq'_'$size'_'$max_seq_length'_sequence'
+param_test="{$window_step,$window_size,$highfreq,$lowfreq,$size,$max_seq_len,$n_stream,$max_batch_len,$threshold,$compute_deltas}"
+param_txt=$typeparam'_'$window_steptxt'_'$window_sizetxt'_'$highfreq'_'$lowfreq'_'$size'_'$max_seq_length'_sequence'
 DATE_BEGIN=`date +[%Y-%m-%d\ %H:%M:%S.%N]`
 
 if [ $MODE_TEST_DEBUG -eq 1 ] ; then
-	echo " !!! MODE DEBUG - TOUT LE CONTNU DE $curdir/Features VA ETRE EFFACE !!! "
-	echo " \\t CTRL + C pour arreter le processus et mettre MODE_TEST_DEBUG=0 dans run_rnn_yun.sh"
-	echo " \\t N'importe que touche pour continuer"
-##	read nimportequoi
+    echo " !!! MODE DEBUG - TOUT LE CONTNU DE $curdir/Features VA ETRE EFFACE !!! "
+    echo " \\t CTRL + C pour arreter le processus et mettre MODE_TEST_DEBUG=0 dans run_rnn_yun.sh"
+    echo " \\t N'importe que touche pour continuer"
+##  read nimportequoi
 fi
 
 if [ $MODE_TEST_DEBUG -eq 1 ] ; then
-	rm -rf $curdir/Features/*
+    rm -rf $curdir/Features/*
 fi
 
 flag=0
 if [ "$(ls $curdir/Features)" ] ; then
-	if [ -d $curdir/Features/$rep_classes ]; then
-		if [ -d $curdir/Features/$rep_classes/$param_txt ]; then
-		  echo "data already prepared..."
-		  dir_classes="$curdir/Features/$rep_classes"
-		  rep_classes="$dir_classes/$param_txt"
-		else
-		  dir_classes="$curdir/Features/$rep_classes"
-		  rep_classes="$dir_classes/$param_txt"
-		  echo "creation  de " $rep_classes
-		  mkdir $rep_classes
-		  echo "Preparing datasets"
-		  cp $curdir/$namethisfic $rep_classes/$namethisfic
-		  flag=1
-		fi
-	else
-	  dir_classes="$curdir/Features/$rep_classes"
-	  echo "creation  de " $dir_classes
-	  mkdir $dir_classes
-	  rep_classes="$dir_classes/$param_txt"
-	  echo "creation  de " $rep_classes
-	  mkdir $rep_classes
-	  echo "Preparing datasets"
-	  cp $curdir/$namethisfic $rep_classes/$namethisfic
-	   flag=1
-	fi
+    if [ -d $curdir/Features/$rep_classes ]; then
+        if [ -d $curdir/Features/$rep_classes/$param_txt ]; then
+          echo "data already prepared..."
+          dir_classes="$curdir/Features/$rep_classes"
+          rep_classes="$dir_classes/$param_txt"
+        else
+          dir_classes="$curdir/Features/$rep_classes"
+          rep_classes="$dir_classes/$param_txt"
+          echo "creation  de " $rep_classes
+          mkdir $rep_classes
+          echo "Preparing datasets"
+          cp $curdir/$namethisfic $rep_classes/$namethisfic
+          flag=1
+        fi
+    else
+      dir_classes="$curdir/Features/$rep_classes"
+      echo "creation  de " $dir_classes
+      mkdir $dir_classes
+      rep_classes="$dir_classes/$param_txt"
+      echo "creation  de " $rep_classes
+      mkdir $rep_classes
+      echo "Preparing datasets"
+      cp $curdir/$namethisfic $rep_classes/$namethisfic
+       flag=1
+    fi
 else
 #  echo "Preparing datasets"
   dir_classes="$curdir/Features/$rep_classes"
@@ -117,38 +124,38 @@ fi
 ######################### CREATE DATASET ###############################
 STEP1_START=$(date +%s)
 if [ $flag -eq 1 ] ; then
-  python $curdir/Scripts/format_data_rnn_yun.py --data_type "train" --rep_test $rep_classes \
-                        --param $param_test --classes $classes
-  python $curdir/Scripts/format_data_rnn_yun.py --data_type "valid" --rep_test $rep_classes \
-                        --param $param_test --classes $classes
-  python $curdir/Scripts/format_data_rnn_yun.py --data_type "test" --rep_test $rep_classes \
-                        --param $param_test --classes $classes
+  python $curdir/Scripts/format_mult_env_rnn.py --data_type "train" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
+  python $curdir/Scripts/format_mult_env_rnn.py --data_type "valid" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
+  python $curdir/Scripts/format_mult_env_rnn.py --data_type "test" --rep_test $rep_classes \
+                        --param $param_test --classes_1 $classes_1 --classes_2 $classes_2
 fi
 STEP1_END=$(date +%s)
 
 ############################### TRAIN NETWORK ###########################
 STEP2_START=$(date +%s)
 if [ -d $rep_classes/$couchetxt ]; then
-	echo "Model RNN/LSTM $couchetxt is detected with these data. Loading params"
-	python $rnndir/run_rnn.py --train-data "$rep_classes/train.pickle.gz" --test-data "$rep_classes/test.pickle.gz" \
-                                                    --valid-data "$rep_classes/valid.pickle.gz" --nlayers $Nlayers --ndir $Ndirs --multi_env $multi_env\
-                                                    --nx $size --nh $Nh --ah $Ah --ay $Ay --predict $predictPer --loss $loss --l1 $L1reg \
-                                                    --l2 $L2reg --momentum $momentum --frontEnd $frontEnd --filename $filename\
-                                                    --initparams $initParams --epoch $n_epoch --lambda $lrate --multi_label $multi_label\
-		                           --filesave "$rep_classes/$couchetxt/rnn.params" --fileTex "$rep_classes/$couchetxt/tex" \
-                                                    --classes $classes > $rep_classes/$couchetxt/results.log
+    echo "Model RNN/LSTM $couchetxt is detected with these data. Loading params"
+    python $rnndir/run_rnn.py --train-data "$rep_classes/train.pickle.gz" --test-data "$rep_classes/test.pickle.gz" \
+                                                --valid-data "$rep_classes/valid.pickle.gz" --nlayers $Nlayers --ndir $Ndirs --multi_env $multi_env\
+                                                --nx $size --nh $Nh --ah $Ah --ay $Ay --predict $predictPer --loss $loss --l1 $L1reg \
+                                                --l2 $L2reg --momentum $momentum --frontEnd $frontEnd --filename $filename\
+                                                --initparams $initParams --epoch $n_epoch --lambda $lrate --multi_label $multi_label\
+                                                --filesave "$rep_classes/$couchetxt/rnn.params" --fileTex "$rep_classes/$couchetxt/tex" \
+                                                --classes_1 $classes_1 --classes_2 $classes_2 > $rep_classes/$couchetxt/results.log
 else
-	echo "Training the RNN model ..."
-	mkdir "$rep_classes/$couchetxt"
-	echo $param_test > $rep_classes/$couchetxt/log.txt
-	mkdir "$rep_classes/$couchetxt/tex"
+    echo "Training the RNN model ..."
+    mkdir "$rep_classes/$couchetxt"
+    echo $param_test > $rep_classes/$couchetxt/log.txt
+    mkdir "$rep_classes/$couchetxt/tex"
     python $rnndir/run_rnn.py --train-data "$rep_classes/train.pickle.gz" --test-data "$rep_classes/test.pickle.gz" \
                                                     --valid-data "$rep_classes/valid.pickle.gz" --nlayers $Nlayers --ndir $Ndirs --multi_env $multi_env\
                                                     --nx $size --nh $Nh --ah $Ah --ay $Ay --predict $predictPer --loss $loss --l1 $L1reg \
                                                     --l2 $L2reg --momentum $momentum --frontEnd $frontEnd --filename $filename\
                                                     --initparams $initParams --epoch $n_epoch --lambda $lrate --multi_label $multi_label\
                                                     --filesave "$rep_classes/$couchetxt/rnn.params" --fileTex "$rep_classes/$couchetxt/tex" \
-                                                    --classes $classes > $rep_classes/$couchetxt/results.log
+                                                    --classes_1 $classes_1 --classes_2 $classes_2 > $rep_classes/$couchetxt/results.log
 fi
 STEP2_END=$(date +%s)
 

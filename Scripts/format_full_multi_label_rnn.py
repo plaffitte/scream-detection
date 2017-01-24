@@ -158,6 +158,7 @@ for i,j in multi_lab.iteritems():
                     label_vector = np.zeros((1, (N_classes_1+N_classes_2))).astype(np.int32)
                     mask_vector = np.zeros(1).astype(np.int32)
                     while stream_full != True:
+                        print index_2
                         try: ### Check if next label needs to be retrieved for each label file
                             if restart:
                                 cur_line_1 = lines_1[index_1].split()
@@ -191,7 +192,7 @@ for i,j in multi_lab.iteritems():
                                     length = (stop - start) / 10.0 ** 7
                                 audio = wave.read_frames(freq * length)
                             if (label_1 in label_dic) and (label_2 in label_dic):
-                                time_per_occurrence_class[label_dic[label_1]+label_dic[label_2]].append(length)
+                                time_per_occurrence_class[label_dic[label_1]].append(length)
                                 time_per_occurrence_class[label_dic[label_2]].append(length)
                                 time_1 = np.sum(time_per_occurrence_class[label_dic[label_1]])
                                 time_2 = np.sum(time_per_occurrence_class[label_dic[label_2]])
@@ -242,7 +243,7 @@ for i,j in multi_lab.iteritems():
                                             re_use = True
                                     else:
                                         # Data shorter than max_stream_len -> check if fits in current stream
-                                        if (len(data_vector) + len(labels)) > (max_batch_len+1):
+                                        if (len(data_vector) + len(labels)) >= (max_batch_len+1):
                                             # Data doesn't fit in current stream, zero pad current stream and put data in next stream
                                             print('>padding with zeros to match length of maximum stream in batch')
                                             zero_pad()

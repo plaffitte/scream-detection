@@ -27,15 +27,16 @@ window_size=float(param_list[1] )# in seconds, size of MFCC window
 highfreq=float(param_list[2]) # maximal analysis frequency for mfcc
 lowfreq=float(param_list[3]) # minimal analysis frequency for mfcc
 size=int(param_list[4]) # number of mfcc coef
-occurrence_threshold = int(param_list[5])
-compute_delta = param_list[6]
-max_seq_length = int(arguments['max_seq_len'])
-n_stream = int(arguments['n_stream'])
-max_batch_len = int(arguments['max_batch_len'])
+max_seq_length = int(param_list[5] )
+n_stream = int(param_list[6] )
+max_batch_len = int(param_list[7] )
+threshold = int(param_list[8])
+compute_delta = param_list[9]
 
 ##### Initialize label dic #####
+N_classes = len(classes)
 label_dic = {}
-for i in range(len(classes)):
+for i in range(N_classes):
     label_dic[classes[i]] = i
     print classes[i] + " : " + str(i)
 
@@ -98,7 +99,6 @@ def zero_pad():
     if padding_len > 0:
         data_vector = np.concatenate((data_vector, np.zeros((padding_len, size))))
         label_vector = np.concatenate((label_vector, np.zeros((padding_len, N_classes))))
-        # label_vector = np.concatenate((label_vector, np.zeros(padding_len)))
         mask_vector = np.concatenate((mask_vector, -1 * np.ones(padding_len)))
 
 ####### Main Loop ##########
@@ -119,15 +119,13 @@ for i in xrange(len(file_list)):
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
         else:
            wave_name = os.path.join(wav_dir, lab_name[:-4]+'.wav')
-        # wave_name = wav_dir+"/Fic_TEST_P0_L.wav"
         f = audlab.Sndfile(wave_name, 'r')
         freq = f.samplerate
         ind_start = 0
         ind_end = 0
-        while end_file != True:#            print('-------------------> Creating new batch')
+        while end_file != True:
             n_batch_tot += 1
             label_tensor = np.zeros((n_stream, max_batch_len, N_classes))
-            # label_tensor = np.zeros((n_stream, max_batch_len))
             data_tensor = np.zeros((n_stream, max_batch_len, size))
             mask_matrix = -1 * np.zeros((n_stream, max_batch_len))
             for kk in range(n_stream):
@@ -156,7 +154,7 @@ for i in xrange(len(file_list)):
                         if label in label_dic:
                             signal = audio  # audio/math.sqrt(energy)
                             n_occurrence = np.sum(time_per_occurrence_class[label_dic[label]])
-                            if n_occurrence < occurrence_threshold:
+                            if n_occurrence < threshold:
                                 data, labels = create_data(signal, label)
                                 if plot_detail:
                                     im, ax = plt.subplots()
@@ -197,11 +195,10 @@ for i in xrange(len(file_list)):
                                         # Otherwise zero pad current stream and put data in next stream
                                         print('>padding with zeros to match length of maximum stream in batch')
                                         zero_pad()
-                                        stream_full = True
                                         re_use = True
                                 else:
                                     # Data shorter than max_stream_len -> check if fits in current stream
-                                    if (len(data_vector) + len(labels)) > (max_batch_len+1):
+                                    if (len(data_vector) + len(labels)) >= (max_batch_len+1):
                                         # Data doesn't fit in current stream, zero pad current stream and put data in next stream
                                         print('>padding with zeros to match length of maximum stream in batch')
                                         zero_pad()

@@ -19,6 +19,7 @@ import numpy
 from theano.tensor.shared_randomstreams import RandomStreams
 from io_func.model_io import _nnet2file, _cfg2file, _file2nnet, _cnn2file, _file2cnn
 from utils.utils import parse_arguments
+from utils.utils import format_results
 from utils.learn_rates import _lrate2file, _file2lrate
 from utils.network_config import NetworkConfig
 from learning.sgd import train_sgd, validate_by_minibatch
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     nnet_spec = arguments['nnet_spec']
     wdir = arguments['wdir']
     multi_label = arguments['multi_label']
-    if multi_label=="True": multi_label = True
+    if multi_label=="true": multi_label = True
     else:   multi_label = False
 
     # parse network configuration from arguments, and initialize data reading
@@ -84,41 +85,20 @@ if __name__ == '__main__':
     log('> ... finetuning the model')
     while (cfg.lrate.get_rate() != 0):
         # one epoch of sgd training
-        train_error, pred, _ = train_sgd(train_fn, cfg)
-        labels = cfg.train_sets.label_vec
-        correct_number = 0.0
-        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
-        class_occurrence = numpy.zeros((1,cfg.n_outs))
-        for i in range(len(pred)):
-            p_sorted = pred[i]
-            if p_sorted == labels[i]:
-                correct_number += 1
-                confusion_matrix[labels[i], labels[i]] += 1
-            else:
-                confusion_matrix[labels[i], p_sorted] += 1
-            class_occurrence[0, labels[i]] += 1
-        confusion_matrix = 100 * confusion_matrix / class_occurrence.T
-        log('-->> Epoch %d, training error %f ' % (cfg.lrate.epoch, 100 * numpy.mean(train_error)) + '(%)')
-        log('Confusion Matrix is \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
+        train_error, pred, labels = train_sgd(train_fn, cfg)
+        log("-->> Epoch %d, \n " % cfg.lrate.epoch)
+        log("- Training:\n")
+        if multi_label:
+            format_results(train_error, pred, labels, multi_label, cfg)
+        else:
+            format_results(train_error, pred, cfg.train_sets.label_vec, multi_label, cfg)
         # validation
-        valid_error, pred2, _ = validate_by_minibatch(valid_fn, cfg)
-        labels = cfg.valid_sets.label_vec
-        correct_number = 0.0
-        confusion_matrix = numpy.zeros((cfg.n_outs, cfg.n_outs))
-        class_occurrence = numpy.zeros((1,cfg.n_outs))
-        for i in range(len(pred2)):
-            p_sorted = pred2[i]
-            if p_sorted == labels[i]:
-                correct_number += 1
-                confusion_matrix[labels[i], labels[i]] += 1
-            else:
-                confusion_matrix[labels[i], p_sorted] += 1
-            class_occurrence[0, labels[i]] += 1
-        confusion_matrix = 100 * confusion_matrix / class_occurrence.T
-        error_rate = 100 * (1.0 - correct_number / pred2.shape[0])
-        log('-->> Epoch %d, lrate %f, validation error %f ' % (cfg.lrate.epoch, cfg.lrate.get_rate(),
-                                                            100 * numpy.mean(valid_error)) + '(%)')
-        log('Confusion Matrix: \n\n ' + str(numpy.around(confusion_matrix, 2)) + ' (%)\n')
+        valid_error, pred2, labels = validate_by_minibatch(valid_fn, cfg)
+        log("- Validation:\n")
+        if multi_label:
+            format_results(valid_error, pred2, labels, multi_label, cfg)
+        else:
+            format_results(valid_error, pred2, cfg.valid_sets.label_vec, multi_label, cfg)
         cfg.lrate.get_next_rate(current_error = 100 * numpy.mean(valid_error))
         # output nnet parameters and lrate, for training resume
         if cfg.lrate.epoch % cfg.model_save_step == 0:
