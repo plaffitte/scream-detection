@@ -93,6 +93,7 @@ if __name__ == '__main__':
     while (cfg.lrate.get_rate() != 0):
         # one epoch of sgd training
         train_error, pred, labels = train_sgd(train_fn, cfg)
+        n_data_train = len(pred)
         log("-->> Epoch %d, \n " % cfg.lrate.epoch)
         log("- Training:\n")
         if multi_label:
@@ -101,6 +102,7 @@ if __name__ == '__main__':
             format_results(train_error, pred, cfg.train_sets.label_vec, multi_label, cfg)
         # validation
         valid_error, pred2, labels = validate_by_minibatch(valid_fn, cfg)
+        n_data_valid = len(pred2)
         log("- Validation:\n")
         if multi_label:
             format_results(valid_error, pred2, labels, multi_label, cfg)
@@ -113,6 +115,14 @@ if __name__ == '__main__':
             _lrate2file(cfg.lrate, wdir + '/training_state.tmp')
 
     # save the model and network configuration
+    for i in range(len(cfg.hidden_layers_sizes)):
+        if i==0:
+            n_params = (cfg.n_ins + 1) * cfg.hidden_layers_sizes[i]
+        else:
+            n_params += (cfg.hidden_layers_sizes[i-1] + 1) * cfg.hidden_layers_sizes[i]
+    n_params += cfg.n_outs * (cfg.hidden_layers_sizes[i-1] + 1)
+    ratio = float(n_params) / float(n_data_train)
+    log('-->> Ratio Parameters / Data : ' + str(ratio))
     if cfg.param_output_file != '':
         _nnet2file(dnn.layers, filename=cfg.param_output_file, input_factor = cfg.input_dropout_factor, factor = cfg.dropout_factor)
         log('> ... the final PDNN model parameter is ' + cfg.param_output_file)
