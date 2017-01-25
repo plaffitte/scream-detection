@@ -50,7 +50,7 @@ data_vector = np.zeros((1, size * N), dtype=np.float32)
 time_per_occurrence_class = [[] for i in range(N_classes)]
 
 ##### Couple log writings #####
-logfile = os.path.join(target_path, 'data_log_' + '.log')
+logfile = os.path.join(target_path, 'data_log_' + name_var + '.log')
 log = open(logfile, 'w')
 string = '===== Parametre Features:\n'; log.write(string)
 string = ' typeFeature : ' + typeFeature + '\n'; log.write(string)
@@ -77,9 +77,9 @@ for i in range(len(file_list)):
         wave_len = lines[len(lines) - 1]
         if name_var=="train":
             count_min = 0
-            count_max = 2 * float(wave_len.split()[1]) / 3
+            count_max = 3 * float(wave_len.split()[1]) / 4
         else:
-            count_min = 2* float(wave_len.split()[1]) / 3
+            count_min = 3 * float(wave_len.split()[1]) / 4
             count_max = wave_len
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
