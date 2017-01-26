@@ -67,7 +67,6 @@ string = '===== Name of corresponding wav file:\n'; log.write(string)
 file_list = os.listdir(label_path)
 file_list = [file for file in file_list if os.path.isfile(os.path.join(label_path, file))]
 wav_dir = os.path.join(os.path.split(label_path)[0], 'wav')
-time = 0
 for i in range(len(file_list)):
     lab_name = file_list[i] # os.path.split(os.path.join(wav_dir,file_list[i]))[1]
     if '~' in lab_name:
@@ -77,9 +76,9 @@ for i in range(len(file_list)):
         wave_len = lines[len(lines) - 1]
         if name_var=="train":
             count_min = 0
-            count_max = 3 * float(wave_len.split()[1]) / 4
+            count_max = 5 * float(wave_len.split()[1]) / 6
         else:
-            count_min = 3 * float(wave_len.split()[1]) / 4
+            count_min = 5 * float(wave_len.split()[1]) / 6
             count_max = wave_len
         if "WS" in lab_name:
             wave_name = os.path.join(wav_dir, lab_name[:-7]+'.wav')
@@ -100,41 +99,39 @@ for i in range(len(file_list)):
                 else:
                     length = (stop - start) / 10.0 ** 7
                 if (label in label_dic) & (start > count_min) & (stop <= count_max):
-                    if time < threshold:
-                        audio = f.read_frames(freq*(length))
-                        # energy = np.sum(audio ** 2, 0) / len(audio)
-                        signal = audio  # audio/math.sqrt(energy)
-                        mfcc = get_mfcc(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
-                                        highfreq=highfreq, numcep=size, nfilt=size + 2)
-                        if compute_delta == "True":
-                            d1_mfcc = np.zeros((mfcc.shape[0]-1,mfcc.shape[1]))
-                            for k in range(mfcc.shape[0]-1):
-                                d1_mfcc[k,:] = mfcc[k+1,:] - mfcc[k,:]
-                            mfcc = mfcc[1:,:]
-                        N_iter = np.floor((len(mfcc) - N) / slide)
-                        # apply context window
-                        if (length/window_step) > N:
-                            time_per_occurrence_class[label_dic[label]].append(length)
-                            time = np.sum(time_per_occurrence_class[label_dic[label]])
-                            mfcc_matrix = np.zeros((1, size * N))
-                            for k in range(int(N_iter)):
-                                mfcc_vec = []
-                                for kk in range(N):
-                                    mfcc_vec = np.concatenate((mfcc_vec, mfcc[k * slide + kk, :]))
-                                    if compute_delta == "True":
-                                        mfcc_vec = np.concatenate((mfcc_vec, d1_mfcc[k * slide + kk, :]))
-                                mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
-                            num_label = label_dic[label] * np.ones(len(mfcc_matrix) - 1)
-                            label_vector = np.append(label_vector, num_label.astype(np.float32, copy=False))
-                            data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
-                        else:
-                            print('Input data sequence does not match minimal length requirement: ignoring')
+                    audio = f.read_frames(freq*(length))
+                    signal = audio  # audio/math.sqrt(energy)
+                    mfcc = get_mfcc(signal, freq, winstep=window_step, winlen=window_size, nfft=2048, lowfreq=lowfreq,
+                                    highfreq=highfreq, numcep=size, nfilt=size + 2)
+                    if compute_delta == "True":
+                        d1_mfcc = np.zeros((mfcc.shape[0]-1,mfcc.shape[1]))
+                        for k in range(mfcc.shape[0]-1):
+                            d1_mfcc[k,:] = mfcc[k+1,:] - mfcc[k,:]
+                        mfcc = mfcc[1:,:]
+                    N_iter = np.floor((len(mfcc) - N) / slide)
+                    # apply context window
+                    if (length/window_step) > N:
+                        time_per_occurrence_class[label_dic[label]].append(length)
+                        mfcc_matrix = np.zeros((1, size * N))
+                        for k in range(int(N_iter)):
+                            mfcc_vec = []
+                            for kk in range(N):
+                                mfcc_vec = np.concatenate((mfcc_vec, mfcc[k * slide + kk, :]))
+                                if compute_delta == "True":
+                                    mfcc_vec = np.concatenate((mfcc_vec, d1_mfcc[k * slide + kk, :]))
+                            mfcc_matrix = np.concatenate((mfcc_matrix, mfcc_vec[np.newaxis, :]))
+                        num_label = label_dic[label] * np.ones(len(mfcc_matrix) - 1)
+                        label_vector = np.append(label_vector, num_label.astype(np.float32, copy=False))
+                        data_vector = np.concatenate((data_vector, mfcc_matrix[1:,:].astype(np.float32, copy=False)),0)
+                    else:
+                        print('Input data sequence does not match minimal length requirement: ignoring')
             except KeyError, e:
                 print "Wrong label name:", label, "at line", j+1
             except:
                 print "-> Unexpected error:", sys.exc_info()[0]
                 print "-> Label file: ", lab_name
                 print "-> Line: ", j
+                print "-> Wave: "; wave_name
                 raise
     print("Size of data_vector: ", data_vector.shape)
 
@@ -155,7 +152,7 @@ for class_name, class_value in label_dic.items():
     # if not time_per_occurrence_class[class_value]:
         string = 'Name of corresponding wav file:'+wave_name+'\n'
         log.write(string)
-        string = 'number of data from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
+        string = 'number of data blocks from class' + class_name + ':' + str(len(time_per_occurrence_class[class_value]))+'\n'
         log.write(string)
         string = 'length of smallest data from class:' + class_name + ':' + str(min(time_per_occurrence_class[class_value]))+'\n'
         log.write(string)
