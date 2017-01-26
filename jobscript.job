@@ -1,0 +1,58 @@
+#!/bin/sh
+
+## Configure job parameters
+#--------------------------
+#SBATCH -J PLF_simu
+#SBATCH --mail-user pierre.laffitte@ifsttar.fr
+#SBATCH --mail-type=ALL
+# SBATCH -d singleton
+#SBATCH --ntasks=1
+
+
+## Display cluster parameters
+#----------------------------
+echo
+echo " >> Running on host:      "$SLURM_NODEID
+echo "    |> and on nodes:      "$SLURM_NODELIST
+echo "    |> in directory:      "$SLURM_SUBMIT_DIR
+echo "    |> with name:         "$SBATCH_JOB_NAME
+echo "    |> with job id:       "$SLURM_JOB_ID
+echo "    |> for nslots:        "$SLURM_NTASKS
+echo "    |> script file:       "$1
+echo
+
+
+## Display start time
+#--------------------
+echo
+START=$(date +%s)
+echo Simulation starts at: `date`
+
+
+## Execute program
+#-----------------
+module load shared slurm miniconda3
+source activate py2k7theano
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+sh $1
+source deactivate
+
+
+## Display end time
+#------------------
+echo
+STOP=$(date +%s)
+echo Simulation ends at `date `
+
+
+## Compute and display elapsed time
+#----------------------------------
+echo
+DIFF=$(( $STOP - $START ))
+DAYS=$(( $DIFF / (60*60*24) ))
+HR=$(( ($DIFF - $DAYS*60*60*24) / (60*60) ))
+MIN=$(( ($DIFF - $DAYS*60*60*24 - $HR*60*60) / (60) ))
+SEC=$(( $DIFF - $DAYS*60*60*24 - $HR*60*60 - $MIN*60 ))
+echo "Elapsed time :: $DAYS jours $HR heures $MIN minutes et $SEC secondes"
+echo
+echo $HOSTNAME $OMP_NUM_THREADS $DIFF >> $SBATCH_JOB_NAME"_results.txt"
